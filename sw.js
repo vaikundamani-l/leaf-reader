@@ -1,4 +1,4 @@
-const CACHE='leaf-v5';
+const CACHE='leaf-v6';
 const ASSETS=['./','index.html','css/style.css','js/app.js','js/storage.js','vendor/epub.min.js','vendor/jszip.min.js','manifest.json','library/room.epub'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
