@@ -21,7 +21,7 @@ From ``, run `python3 -m http.server 8000` and open http://localhost:8000. HTTPS
 
 ## Architecture
 
-`js/app.js` owns presentation, EPUB lifecycle and feature orchestration. `js/storage.js` wraps IndexedDB. `css/style.css` contains responsive layout and theme rules. `sw.js` caches same-origin app resources. `samples/` contains readable EPUB examples. UI strings from books and backups are inserted using textContent rather than HTML.
+`js/app.js` owns presentation, EPUB lifecycle and feature orchestration. `js/storage.js` wraps IndexedDB. `css/style.css` contains responsive layout and theme rules. `sw.js` caches same-origin app resources. `library/` contains readable EPUB examples. UI strings from books and backups are inserted using textContent rather than HTML.
 
 The implementation consolidates the proposed module tree rather than creating empty placeholder modules. Each feature is a named function; further separation is appropriate as the project grows.
 
