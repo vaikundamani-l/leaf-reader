@@ -63,7 +63,9 @@ const demos = [
   { id: 'demo-pride', title: 'Pride and Prejudice', author: 'Jane Austen', color: '#e3d5c7', symbol: '❦', path: 'pride.epub' },
   { id: 'demo-alice', title: 'Alice’s Adventures in Wonderland', author: 'Lewis Carroll', color: '#b1c4ca', symbol: '♠', path: 'alice.epub' },
   { id: 'demo-room', title: 'The Art of Slowing Down', author: 'Leaf Reader', color: '#d6bbad', symbol: '◒', path: 'room.epub' },
-  { id: 'demo-siddhartha', title: 'Siddhartha', author: 'Hermann Hesse', color: '#d3bc7b', symbol: '☼', path: 'siddhartha.epub' }
+  { id: 'demo-siddhartha', title: 'Siddhartha', author: 'Hermann Hesse', color: '#d3bc7b', symbol: '☼', path: 'siddhartha.epub' },
+  { id: 'demo-gita-children', title: 'பகவத் கீதை (சிறுவர் பதிப்பு)', author: 'சி. சுப்ரமணிய பாரதியார்', color: '#c27b38', ink: '#fff9ee', symbol: 'ॐ', path: 'Bhagavad-Gita-Tamil-Children-Friendly.epub', language: 'ta' },
+  { id: 'demo-sattam-arivom', title: 'சட்டம் அறிவோம்', author: 'சட்ட வழிகாட்டி', color: '#3d5a80', ink: '#f0f4f8', symbol: '⚖', path: 'Sattam_Arivom_Tamil_Legal_Guide.epub', language: 'ta' }
 ].map(b => ({ ...b, demo: true, progress: 0, added: 0 }));
 
 function toast(t) {

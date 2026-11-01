@@ -30,10 +30,12 @@ All automated tests have executed and passed successfully:
   - `PASS`: `pride.epub` (595 KB, Valid container & spine)
   - `PASS`: `walden.epub` (670 KB, Valid container & spine)
   - `PASS`: `garden.epub` (1571 KB, Valid container & spine)
+  - `PASS`: `Sattam_Arivom_Tamil_Legal_Guide.epub` (1.8 MB, Verified Tamil unicode, OPF, and container)
+  - `PASS`: `Bhagavad-Gita-Tamil-Children-Friendly.epub` (23.2 MB, Verified Tamil unicode, OPF, and container)
 
 - **End-to-End Chrome Headless CDP Suite (`tests/test-e2e-browser.cjs`)**:
   - `PASS`: Page load, title, and initial DOM rendering.
-  - `PASS`: Bookshelf rendering all 6 books with covers and metadata.
+  - `PASS`: Bookshelf rendering all 8 books with covers and metadata.
   - `PASS`: Opening EPUB reader ("The Art of Slowing Down") and rendering CFI location.
   - `PASS`: Page turn navigation (Next / Previous buttons, keyboard shortcuts, and margin tap zones).
   - `PASS`: Table of Contents dialog with active chapter indicators.
@@ -48,7 +50,7 @@ All automated tests have executed and passed successfully:
   - `PASS`: Zero console errors or uncaught exceptions during runtime.
 
 - **Large EPUB Performance Suite (`tests/test-large-epub.cjs`)**:
-  - `PASS`: Largest library book (The Secret Garden) opened and rendered initial view in under 1 second.
+  - `PASS`: 24 MB Tamil Bhagavad Gita (Children-friendly) opened and rendered initial view in under 1 second.
   - `PASS`: No memory leaks or location regeneration stalls.
 
 - **Affected EPUB Full Integration Suite (`tests/test-affected-epub-integration.cjs`)**:

@@ -1,4 +1,4 @@
-const CACHE = 'leaf-v10';
+const CACHE = 'leaf-v11';
 const ASSETS = [
   './',
   'index.html',
@@ -14,7 +14,8 @@ const ASSETS = [
   'library/siddhartha.epub',
   'library/pride.epub',
   'library/walden.epub',
-  'library/garden.epub'
+  'library/garden.epub',
+  'library/Sattam_Arivom_Tamil_Legal_Guide.epub'
 ];
 
 self.addEventListener('install', event => {

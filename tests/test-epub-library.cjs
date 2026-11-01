@@ -11,7 +11,9 @@ const sampleFiles = [
   'siddhartha.epub',
   'pride.epub',
   'walden.epub',
-  'garden.epub'
+  'garden.epub',
+  'Sattam_Arivom_Tamil_Legal_Guide.epub',
+  'Bhagavad-Gita-Tamil-Children-Friendly.epub'
 ];
 
 async function testAllEpubs() {
@@ -43,7 +45,15 @@ async function testAllEpubs() {
     assert.ok(opfContent.includes('<metadata'), `${filename} package.opf must contain metadata`);
     assert.ok(opfContent.includes('<spine'), `${filename} package.opf must contain spine`);
 
-    console.log(`✓ PASS: ${filename} (Size: ${(data.length / 1024).toFixed(0)} KB, Valid container & spine)`);
+    if (filename.includes('Tamil') || filename.includes('Sattam')) {
+      assert.ok(
+        /[\u0B80-\u0BFF]/.test(opfContent),
+        `${filename} must contain Tamil unicode text in package opf`
+      );
+      console.log(`✓ PASS: ${filename} (Size: ${(data.length / (1024*1024)).toFixed(1)} MB, Verified Tamil unicode & OPF)`);
+    } else {
+      console.log(`✓ PASS: ${filename} (Size: ${(data.length / 1024).toFixed(0)} KB, Valid container & spine)`);
+    }
   }
 }
 
