@@ -1,1 +1,19 @@
-{"name":"Leaf Reader","short_name":"Leaf","start_url":"./","display":"standalone","background_color":"#f7f8f4","theme_color":"#38654e"}
+{
+  "name": "Leaf Reader",
+  "short_name": "Leaf",
+  "description": "A tranquil, distraction-free, local-first EPUB reader.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f8f4",
+  "theme_color": "#38654e",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%2338654e'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='Georgia,serif' font-size='280' fill='%23f7f8f4'%3E%E2%97%92%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

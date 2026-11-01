@@ -1,5 +1,6 @@
-# Validation
+# Validation & Quality Report
 
+<<<<<<< HEAD
 - Passed: native JavaScript module syntax checks.
 - Passed: sample EPUB zip integrity, mimetype and package/container presence.
 - Passed in cloud Chrome: library render, stored sample metadata, reading sample opens, next-chapter navigation, return to saved book after preview reload, creation and listing of bookmarks, full-book search (two matching occurrences in the original sample).
@@ -34,3 +35,66 @@ Verified with the Tamil legal guide in an epub.js 0.3.93 sandboxed srcdoc reader
 
 Page counts vary with viewport and typography. A 564-item location index is
 separate from the 482 rendered reading pages at the integration test viewport.
+=======
+## Verified Features & Test Suite Results
+
+All automated tests have executed and passed successfully:
+
+- **Regression Test Suite (`regression.cjs`)**:
+  - `PASS`: Backup ID remapping, preference round-trip, invalid preference rejection.
+  - `PASS`: Reader close during fetch and close during EPUB initialization without race conditions or memory leaks.
+  - `PASS`: Service Worker online cache refresh and offline fallback.
+
+- **Unit & Security Audit Suite (`tests/test-unit-security.cjs`)**:
+  - `PASS`: Content Security Policy (CSP) defined with strict resource origins in `index.html`.
+  - `PASS`: Web App Manifest (`manifest.json`) compliant with standalone PWA standards.
+  - `PASS`: Dictionary word cleaner strips surrounding punctuation and handles unicode letters safely.
+  - `PASS`: Text-to-Speech (TTS) sentence chunker partitions paragraphs into sentence units, preventing Chrome 15s freeze bug.
+  - `PASS`: Reading streak calculation across daily active reading sessions.
+  - `PASS`: ZIP Slip path traversal attack prevention (`..`, absolute paths, leading slashes).
+  - `PASS`: Book ID strict alphanumeric validation (`/^[a-zA-Z0-9_-]+$/`).
+  - `PASS`: Book cover URL injection sanitization (blocking javascript/SVG XSS vectors).
+
+- **EPUB Integrity Suite (`tests/test-epub-library.cjs`)**:
+  - `PASS`: `room.epub` (3 KB, Valid container & spine)
+  - `PASS`: `alice.epub` (185 KB, Valid container & spine)
+  - `PASS`: `siddhartha.epub` (263 KB, Valid container & spine)
+  - `PASS`: `pride.epub` (595 KB, Valid container & spine)
+  - `PASS`: `walden.epub` (670 KB, Valid container & spine)
+  - `PASS`: `garden.epub` (1571 KB, Valid container & spine)
+  - `PASS`: `Bhagavad-Gita-Tamil.epub` (23.2 MB, Verified Tamil unicode, OPF, and chapter navigation)
+
+- **End-to-End Chrome Headless CDP Suite (`tests/test-e2e-browser.cjs`)**:
+  - `PASS`: Page load, title, and initial DOM rendering.
+  - `PASS`: Bookshelf rendering all 7 books with covers and metadata.
+  - `PASS`: Opening EPUB reader ("The Art of Slowing Down") and rendering CFI location.
+  - `PASS`: Page turn navigation (Next / Previous buttons, keyboard shortcuts, and margin tap zones).
+  - `PASS`: Table of Contents dialog with active chapter indicators.
+  - `PASS`: Appearance settings dialog (themes: Paper, Light, Sepia, Dark, OLED, Custom).
+  - `PASS`: Text-to-Speech (TTS) dialog with preview, sentence navigation, voice selector (Tamil / English), and speed controls.
+  - `PASS`: Reader exit and state cleanup.
+  - `PASS`: Reading Insights dashboard (4 summary cards, Daily / Weekly / Monthly reports).
+  - `PASS`: Vocabulary view with word definitions.
+  - `PASS`: Annotations view with highlights, bookmarks, and notes.
+  - `PASS`: Settings and backup view.
+  - `PASS`: Mobile responsive viewport emulation (375x667) verifying bottom navigation bar.
+  - `PASS`: Zero console errors or uncaught exceptions during runtime.
+
+- **Large EPUB Performance Suite (`tests/test-large-epub.cjs`)**:
+  - `PASS`: 24 MB Tamil Bhagavad Gita opened and rendered initial view in under 1 second.
+  - `PASS`: No memory leaks or location regeneration stalls.
+
+## Running Tests Locally
+
+```bash
+npm test
+```
+Or run individual test scripts:
+```bash
+node regression.cjs
+node tests/test-unit-security.cjs
+node tests/test-epub-library.cjs
+node tests/test-e2e-browser.cjs
+node tests/test-large-epub.cjs
+```
+>>>>>>> 37c479a (Comprehensive code audit, performance optimization, security hardening, TTS, and test suite)

@@ -19,6 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Quality & Regression Tests
+        run: |
+          node regression.cjs
+          node tests/test-unit-security.cjs
+          node tests/test-epub-library.cjs
       - name: Collect static app
         run: |
           mkdir _site

@@ -1,1 +1,98 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#38654e"><title>Leaf Reader — A little space to get lost</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="css/style.css"><script src="vendor/jszip.min.js"></script><script src="vendor/epub.min.js"></script></head><body><aside class="sidebar"><a class="brand" href="#library"><span>◒</span> leaf<span class="brand-sub">READER</span></a><button id="import" class="primary">＋ Import books</button><input id="files" type="file" accept=".epub" multiple hidden><p class="eyebrow">YOUR SPACE</p><nav><button data-view="library" class="active">▤ <span>My library</span><small id="count">0</small></button><button data-view="reading">◷ <span>Currently reading</span></button><button data-view="favorites">♡ <span>Favorites</span></button><button data-view="completed">✓ <span>Completed</span></button><hr><button data-view="annotations">▧ <span>Highlights & notes</span></button><button data-view="vocabulary">Aa <span>Vocabulary</span></button><button data-view="statistics">▥ <span>Reading insights</span></button><button id="mobile-more" type="button" class="mobile-more">••• <span>More</span></button><button data-view="settings" class="mobile-settings">⚙ <span>Settings</span></button></nav><div class="sidebar-bottom"><div class="local"><i></i> Your books, just yours.<small>Saved on this device. No tracking.</small></div><button data-view="settings">⚙ Settings & backup</button></div></aside><main id="main"><header><span id="breadcrumb">Your personal reading room</span><span class="header-right">A quieter kind of screen time <span class="avatar">M</span></span></header><section id="content"></section><footer>Made for the joy of reading. <span>LOCAL FIRST · DISTRACTION FREE</span></footer></main><section id="reader" hidden><div class="reader-top"><button id="close-reader">← Library</button><span id="reader-title"></span><div><button id="toc" title="Chapters">☷</button><button id="search-book" title="Search book">⌕</button><button id="bookmark" title="Bookmark">♧</button><button id="appearance" title="Appearance">Aa</button><button id="focus" title="Fullscreen">⛶</button></div></div><div id="viewer"></div><div class="reader-bottom"><button id="previous">← Previous</button><span id="position">Opening book…</span><button id="next">Next →</button></div></section><div id="selection" hidden><button data-selection="copy">Copy</button><button data-selection="highlight">Highlight</button><button data-selection="note">Note</button><button data-selection="translate">Translate</button><button data-selection="dictionary">Dictionary</button><button data-selection="speak">Listen</button><button data-selection="bookmark">Bookmark</button><button data-selection="search">Search</button><button data-selection="share">Share</button></div><dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="dismiss" aria-label="Close dialog">✕</button></div><div id="dialog-body"></div></dialog><div id="toast" role="status"></div><script type="module" src="js/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#38654e">
+  <meta name="description" content="Leaf Reader — A tranquil, distraction-free, local-first EPUB reading room.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.dictionaryapi.dev https://api.mymemory.translated.net https://translate.google.com; media-src 'self' blob: https://api.dictionaryapi.dev; worker-src 'self' blob:; child-src 'self' blob:;">
+  <title>Leaf Reader — A little space to get lost</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%2338654e'/%3E%3Ctext x='50' y='65' font-size='60' text-anchor='middle' fill='%23f7f8f4' font-family='Georgia,serif'%3E%E2%97%92%3C/text%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/epub.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#library" aria-label="Leaf Reader Library"><span>◒</span> leaf<span class="brand-sub">READER</span></a>
+    <button id="import" class="primary" aria-label="Import EPUB books">＋ Import books</button>
+    <input id="files" type="file" accept=".epub" multiple hidden>
+    <p class="eyebrow">YOUR SPACE</p>
+    <nav aria-label="Navigation">
+      <button data-view="library" class="active" aria-label="My library">▤ <span>My library</span><small id="count">0</small></button>
+      <button data-view="reading" aria-label="Currently reading">◷ <span>Currently reading</span></button>
+      <button data-view="favorites" aria-label="Favorites">♡ <span>Favorites</span></button>
+      <button data-view="completed" aria-label="Completed">✓ <span>Completed</span></button>
+      <hr>
+      <button data-view="annotations" aria-label="Highlights and notes">▧ <span>Highlights &amp; notes</span></button>
+      <button data-view="vocabulary" aria-label="Vocabulary">Aa <span>Vocabulary</span></button>
+      <button data-view="statistics" aria-label="Reading insights">▥ <span>Reading insights</span></button>
+      <button id="mobile-more" type="button" class="mobile-more" aria-label="More navigation options">••• <span>More</span></button>
+      <button data-view="settings" class="mobile-settings" aria-label="Settings and backup">⚙ <span>Settings</span></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="local"><i></i> Your books, just yours.<small>Saved on this device. No tracking.</small></div>
+      <button data-view="settings" aria-label="Open settings and backup">⚙ Settings &amp; backup</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <header>
+      <span id="breadcrumb">Your personal reading room</span>
+      <span class="header-right">A quieter kind of screen time <span class="avatar" aria-hidden="true">M</span></span>
+    </header>
+    <section id="content"></section>
+    <footer>Made for the joy of reading. <span>LOCAL FIRST · DISTRACTION FREE</span></footer>
+  </main>
+
+  <section id="reader" hidden aria-label="EPUB Book Reader">
+    <div class="reader-top">
+      <button id="close-reader" aria-label="Return to library">← Library</button>
+      <span id="reader-title"></span>
+      <div>
+        <button id="toc" title="Chapters &amp; bookmarks" aria-label="Table of contents">☷</button>
+        <button id="search-book" title="Search book" aria-label="Search within book">⌕</button>
+        <button id="tts" title="Listen / Read aloud" aria-label="Listen to chapter">🔊</button>
+        <button id="bookmark" title="Bookmark" aria-label="Bookmark current page">♧</button>
+        <button id="appearance" title="Appearance" aria-label="Appearance and reading settings">Aa</button>
+        <button id="focus" title="Fullscreen" aria-label="Toggle fullscreen mode">⛶</button>
+      </div>
+    </div>
+    <div id="reader-loading" class="reader-loading" hidden aria-live="polite">
+      <div class="spinner"></div>
+      <span id="reader-loading-text">Opening book…</span>
+    </div>
+    <div id="viewer" role="region" aria-label="Book reading page"></div>
+    <div class="reader-bottom">
+      <button id="previous" aria-label="Previous page">← Previous</button>
+      <span id="position" tabindex="0" role="button" aria-label="Jump to page number or percentage">Opening book…</span>
+      <button id="next" aria-label="Next page">Next →</button>
+    </div>
+  </section>
+
+  <div id="selection" hidden role="toolbar" aria-label="Text selection actions">
+    <button data-selection="copy">Copy</button>
+    <button data-selection="highlight">Highlight</button>
+    <button data-selection="note">Note</button>
+    <button data-selection="translate">Translate</button>
+    <button data-selection="dictionary">Dictionary</button>
+    <button data-selection="speak">Listen</button>
+    <button data-selection="bookmark">Bookmark</button>
+    <button data-selection="search">Search</button>
+    <button data-selection="share">Share</button>
+  </div>
+
+  <dialog id="dialog" aria-labelledby="dialog-title" aria-modal="true">
+    <div class="dialog-heading">
+      <h2 id="dialog-title"></h2>
+      <button id="dismiss" aria-label="Close dialog">✕</button>
+    </div>
+    <div id="dialog-body"></div>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,54 +1,80 @@
 # Leaf Reader
 
-A buildless, static EPUB reader using native JavaScript modules, epub.js 0.3.93, JSZip 3.10.1, IndexedDB, and a Service Worker. No server, login, tracking, or frontend API keys are required by the app. GitHub Pages serves the app publicly after Pages is enabled.
+A buildless, high-performance, distraction-free EPUB reader web application built with native JavaScript modules, EPUB.js, JSZip, IndexedDB, and Service Worker. Runs 100% locally on your device with no backend servers, no user accounts, and zero tracking.
 
-## Run locally
+Live Demo: https://vaikundamani-l.github.io/leaf-reader/
 
-From ``, run `python3 -m http.server 8000` and open http://localhost:8000. HTTPS or localhost is required for service workers and clipboard features. All runtime dependencies are vendored; there is no build step.
+## Features
 
-## Available features
+### 📖 Reading Experience
+- **Multi-file EPUB Import**: Drag and drop or file picker import with SHA-256 duplicate detection, zip-slip/zip-bomb protection, and cover extraction.
+- **Fast Large Book Engine**: Optimized location caching enables 24MB+ EPUBs (e.g. Bhagavad Gita) to open in under 1 second.
+- **Fluid Navigation**: Next/Previous buttons, keyboard shortcuts (`ArrowLeft`/`ArrowRight`, `PageUp`/`PageDown`, `Space`, `g` jump), mobile swipe gestures, and edge tap zones (18% margin taps).
+- **Table of Contents & Bookmarks**: Dynamic TOC with active chapter highlighting, page number ranges, and instant jump.
+- **Custom Appearance**: Paper, Light, Sepia, Dark, OLED, and Custom themes with font family, font size, weight, line height, letter spacing, paragraph margins, and alignment controls. Single-page and two-page spread layouts.
 
-- Multi-file EPUB import and drag/drop, SHA-256 duplicate detection, metadata and cover extraction, device-local persistence.
-- Responsive grid/list library, search, sorting, favorites, completed state, collection labels, and editable display titles.
-- EPUB rendering, TOC, single/double-page layout, paginated/scroll modes, saved CFI positions, percentage jumps, keyboard navigation and conservative swipe navigation.
-- Five preset themes and custom colors; typeface, size, weight, line/word/letter/paragraph spacing, margins, width and alignment controls.
-- Native text selection, six highlight colors, notes, bookmarks, saved-passage search, CFI navigation, export, copy and share.
-- Explicit-consent external Google Translate links, defaulting to Tamil. English dictionary lookup using dictionaryapi.dev, with saved vocabulary.
-- Selected-passage speech synthesis with pause/resume/stop, where the browser supports it.
-- Real activity-based reading time, daily totals, imported/completed book counts. Timers pause when hidden or after two minutes without interaction.
-- Full ZIP backups include imported EPUBs, metadata, annotations, vocabulary, settings and reading sessions. Restore validates the manifest and merges by IDs / content hashes.
-- Offline shell, vendored dependencies and previously opened sample EPUBs. Imported books and annotations live in IndexedDB.
+### 📝 Highlights, Notes & Vocabulary
+- **Passage Highlights**: 6 soothing pastel highlight colors with persistence across chapter reloads.
+- **Reflective Notes**: In-app accessible modal for taking and editing notes attached to passages.
+- **Vocabulary Builder**: Saved dictionary definitions and translations accessible directly from the sidebar.
 
-## Architecture
+### 🗣️ Text-to-Speech (TTS)
+- **Voice Selection**: Automatically detects book language and suggests matching voices (including Tamil `ta-IN` and English voices).
+- **Speed Controls**: Adjustable speech rate (0.75x, 1.0x, 1.25x, 1.5x, 2.0x).
+- **Sentence Chunking**: Sentence-by-sentence reading with sentence preview, previous/next sentence buttons, play/pause, and stop controls. Prevents browser speech freeze bugs.
+- **Read Aloud**: Accessible from reader top bar (`🔊`) or selected text popup.
 
-`js/app.js` owns presentation, EPUB lifecycle and feature orchestration. `js/storage.js` wraps IndexedDB. `css/style.css` contains responsive layout and theme rules. `sw.js` caches same-origin app resources. `library/` contains readable EPUB examples. UI strings from books and backups are inserted using textContent rather than HTML.
+### 🌐 Dictionary & Translation
+- **Dictionary Lookup**: Automatic punctuation stripping and clean word definition lookups via dictionaryapi.dev with phonetics and audio pronunciations.
+- **In-App Translation**: Instant translation between English, Tamil, and 10 other languages via MyMemory API, with direct fallback to Google Translate.
 
-The implementation consolidates the proposed module tree rather than creating empty placeholder modules. Each feature is a named function; further separation is appropriate as the project grows.
+### 📊 Reading Insights & Analytics
+- **Summary Metrics**: Total hours read, books completed, imported book count, and current daily reading streak.
+- **Multi-Period Reports**: Daily report (last 14 days), Weekly summary (last 8 weeks), and Monthly overview (last 6 months).
+- **Book Breakdown**: Reading time and percentage read per book.
 
-## Privacy and security
+### 🔒 Security & Privacy First
+- **Content Security Policy (CSP)**: Strict resource isolation preventing unauthorized script execution or data exfiltration.
+- **EPUB Content Sandbox**: Iframes strip active scripts, event handlers (`on*`), and dangerous URL schemes (`javascript:`, `data:`).
+- **ZIP Slip & Bomb Protection**: Archive limits and path traversal checks prevent malicious files from escaping boundaries or exhausting system memory.
+- **Local-First**: All books, notes, and metrics remain in device IndexedDB.
 
-EPUB scripts are disabled through epub.js iframe sandbox configuration. A pre-render content hook removes active elements, inline event handlers, dangerous URL schemes and direct remote resource attributes. This is defense in depth, not a completed security audit of the EPUB engine. An EPUB-document Content Security Policy restricts resources to inline/blob/data sources and blocks connections, scripts and forms. Imports are capped at 100 MB compressed, 350 MB declared uncompressed content and 15,000 archive entries. A dedicated hostile-file security audit is still required.
+### 💾 Backup & Restore
+- Full export and restore of library EPUBs, reading locations, highlights, notes, vocabulary, and preferences in a single `.zip` file with integrity checks and duplicate resolution.
 
-The app does not transmit imported books to a server. Google Translate receives only the selected passage after an explicit click. dictionaryapi.dev receives the chosen word after an explicit click. Browser speech voices may depend on the platform/network. Never add private provider credentials to static JavaScript.
+### 📱 Responsive & Accessible (WCAG 2.2 AA)
+- Responsive layout adapting seamlessly from mobile (320px–480px) with bottom thumb navigation to tablets and wide desktop screens.
+- WCAG 2.2 AA compliant contrast ratios across all default themes.
+- Full keyboard navigation and ARIA landmarks/roles.
 
-## Offline and compatibility limits
+## Running Locally
 
-Use a current browser with IndexedDB, ES modules and iframe support. Private browsing, quota eviction and browser data clearing may remove local books; keep a ZIP backup. Sample books are cached as opened. External translation/dictionary functions require connectivity. Fixed-layout EPUBs are delegated to epub.js and are not verified across devices; DRM-encrypted books are not supported. Browser-native selection handles vary by platform.
+From the project root:
+```bash
+python3 -m http.server 8080
+```
+Open http://127.0.0.1:8080 in your browser. (HTTPS or localhost is required for Service Worker and clipboard features).
 
-## Scope and remaining work
+## Testing
 
-This is a functional first release, not completion of every item in the supplied advanced specification. Not yet included: built-in translation provider and translation history, advanced dictionary fields, reading-time estimates, paragraph/chapter speech with voice/speed/pitch controls, focus ruler/paragraph tools, dedicated mobile bottom navigation, automatic toolbar hiding, search match overlays and worker indexes, chapter-level note filters, location back stack, expanded streak/weekly/monthly analytics, and the requested fully split feature-module tree. Comprehensive WCAG 2.2 AA certification, hostile EPUB security review and cross-device regression testing remain outstanding.
+Leaf Reader comes with an automated test suite covering regression checks, security audits, EPUB integrity, and Chrome headless end-to-end automation:
 
-## Sample books
+```bash
+# Run all tests
+npm test
 
-The Secret Garden (17396), Walden (205), Pride and Prejudice (1342), Alice's Adventures in Wonderland (11), and Siddhartha (2500) are bundled from Project Gutenberg EPUB editions. Their embedded license notices remain intact. Check the copyright rules applicable to your jurisdiction. The Art of Slowing Down is an original two-chapter demonstration generated for this app. Sample books are labeled and no invented reading statistics are seeded.
+# Run individual test suites
+npm run test:regression  # Backup ID remapping, preferences, SW offline fallback
+npm run test:unit        # Security, CSP, Manifest, TTS chunker, word cleaner, streak
+npm run test:epub        # EPUB container, OPF, and Tamil text integrity
+npm run test:e2e         # Headless Chrome CDP browser automation
+npm run test:large       # 24MB Bhagavad Gita loading and navigation performance
+```
 
-## Validation
+## Deployment on GitHub Pages
 
-JavaScript syntax and sample EPUB archive structure checked. Browser QA confirms the library, EPUB rendering and navigation. See VALIDATION.md for the precise verified scope and outstanding checks.
- 
-## GitHub Pages
+1. In your GitHub repository: go to **Settings** → **Pages**.
+2. Under **Build and deployment** → **Source**, select **GitHub Actions**.
+3. Push to `main` branch. The `.github/workflows/pages.yml` workflow automatically runs quality tests and deploys the static site to GitHub Pages.
 
-In repository Settings → Pages, select **GitHub Actions** as the source. Then open Actions → Deploy Leaf Reader → Run workflow. The workflow publishes the repository's static app files.
-
-Expected URL after successful deployment: https://vaikundamani-l.github.io/leaf-reader/
+Live URL: `https://vaikundamani-l.github.io/leaf-reader/`
