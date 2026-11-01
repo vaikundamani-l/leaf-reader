@@ -1,4 +1,4 @@
-const CACHE = 'leaf-v8';
+const CACHE = 'leaf-v9';
 const ASSETS = [
   './',
   'index.html',

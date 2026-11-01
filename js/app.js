@@ -467,9 +467,14 @@ function getTocWithPages(bookInstance, nav) {
     entry.spineIndex = sec ? sec.index : -1;
     entry.startLoc = null;
     if (hasLocations && sec) {
-      const cfi = `epubcfi(${sec.cfiBase}!/4/2/1:0)`;
-      const loc = bookInstance.locations.locationFromCfi(cfi);
-      if (loc >= 0) entry.startLoc = loc;
+      const posItem = bookInstance.leafChapterPositions?.find(p => p.href === entry.href);
+      const cfi = posItem?.cfi || (!entry.href.includes('#') ? `epubcfi(${sec.cfiBase}!/4/2/1:0)` : null);
+      if (cfi) {
+        try {
+          const loc = bookInstance.locations.locationFromCfi(cfi);
+          if (loc >= 0) entry.startLoc = loc;
+        } catch {}
+      }
     }
   }
   for (let i = 0; i < flat.length; i++) {
@@ -497,28 +502,31 @@ function getTocWithPages(bookInstance, nav) {
 }
 
 function getActiveChapter(bookInstance, nav, loc) {
-  if (bookInstance?.leafChapterPositions?.length && loc?.start?.cfi) {
-    let active = null;
-    for (const item of bookInstance.leafChapterPositions) {
-      if (item.cfi && bookInstance.locations?.length()) {
-        try {
-          if (bookInstance.locations.locationFromCfi(item.cfi) <= bookInstance.locations.locationFromCfi(loc.start.cfi)) {
-            active = item;
-          }
-        } catch {}
-      }
-    }
-    if (active) return active;
-  }
   if (!nav?.toc?.length) return null;
   const flat = getFlatToc(nav.toc);
+  if (loc?.start?.cfi && bookInstance?.leafChapterPositions?.length) {
+    try {
+      const compare = new ePub.CFI();
+      const boundaryCfi = loc.end?.cfi || loc.start.cfi;
+      let nearest = null;
+      for (const item of bookInstance.leafChapterPositions) {
+        if (!item.cfi) continue;
+        if (compare.compare(item.cfi, boundaryCfi) <= 0) {
+          if (!nearest || compare.compare(item.cfi, nearest.cfi) >= 0) {
+            nearest = item;
+          }
+        }
+      }
+      if (nearest) return nearest;
+    } catch {}
+  }
   const spineIdx = loc?.start?.index ?? -1;
   const currentLoc = (bookInstance?.locations?.length() && loc?.start?.cfi) ? bookInstance.locations.locationFromCfi(loc.start.cfi) : null;
   if (currentLoc !== null && currentLoc >= 0) {
     let active = null;
     for (const item of flat) {
       const sec = bookInstance.spine?.get(item.href);
-      if (sec) {
+      if (sec && !item.href.includes('#')) {
         const locStart = bookInstance.locations.locationFromCfi(`epubcfi(${sec.cfiBase}!/4/2/1:0)`);
         if (locStart >= 0 && locStart <= currentLoc) active = item;
       }
@@ -529,7 +537,9 @@ function getActiveChapter(bookInstance, nav, loc) {
     let active = null;
     for (const item of flat) {
       const sec = bookInstance.spine?.get(item.href);
-      if (sec && sec.index <= spineIdx) active = item;
+      if (sec && sec.index <= spineIdx && (!active || (bookInstance.spine?.get(active.href)?.index ?? -1) < sec.index)) {
+        active = item;
+      }
     }
     if (active) return active;
   }
@@ -695,10 +705,10 @@ async function openBook(b) {
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
       doc.querySelectorAll('script,iframe,object,embed,form').forEach(n => n.remove());
-      const section = openedBook.spine.get(contents.cfiBase || contents.section?.href);
+      const section = openedBook.spine.get(contents.sectionIndex !== undefined ? contents.sectionIndex : (contents.cfiBase || contents.section?.href));
       if (section) {
         installBookLinks(doc, section, openedBook, rendition, {
-          confirmExternal: href => confirm('Open this external website: ' + href + '?'),
+          confirmExternal: msg => confirm(msg || 'Open this external website?'),
           openExternal: href => window.open(href, '_blank', 'noopener,noreferrer'),
           showError: msg => toast(msg)
         });
@@ -752,7 +762,14 @@ async function openBook(b) {
       selected = null;
       $('#selection').hidden = true;
       b.opened = Date.now();
-      b.progress = Math.max(0, Math.min(100, openedBook.locations.length() ? openedBook.locations.percentageFromCfi(b.cfi) * 100 : (loc.start.index / Math.max(1, book.spine.length - 1)) * 100));
+      if (openedBook.locations.length()) {
+        const pct = openedBook.locations.percentageFromCfi(b.cfi);
+        if (typeof pct === 'number' && !isNaN(pct)) {
+          b.progress = Math.max(0, Math.min(100, pct * 100));
+        }
+      } else if (b.progress === undefined || b.progress === null) {
+        b.progress = Math.max(0, Math.min(100, (loc.start.index / Math.max(1, openedBook.spine.length - 1)) * 100));
+      }
       updateReaderStatus(loc);
       save();
     });
@@ -767,8 +784,21 @@ async function openBook(b) {
     });
 
     applyAppearance();
+    try {
+      await prepareBookChapters(openedBook, await openedBook.loaded.navigation);
+    } catch {}
+    if (!active()) { openedBook.destroy(); return; }
+
+    const cfiCompare = new ePub.CFI();
+    const restoredLocations = restoreBookLocations(openedBook, b.locations, (a, z) => cfiCompare.compare(a, z));
+    if (!restoredLocations) {
+      openedBook.locations._locations = [];
+      openedBook.locations.total = 0;
+      b.locations = null;
+    }
+
     await rendition.display(b.cfi || undefined);
-    if (!active()) return;
+    if (!active()) { openedBook.destroy(); return; }
 
     if (loader) loader.hidden = true;
 
@@ -776,21 +806,17 @@ async function openBook(b) {
       paint(a);
     }
 
-    if (b.locations) {
-      restoreBookLocations(openedBook, b.locations, (x, y) => openedBook.locations.cfiFromLocation ? 0 : x.localeCompare(y));
-    }
+    (restoredLocations ? Promise.resolve() : openedBook.locations.generate(600)).then(() => {
+      if (!active()) return;
+      b.locations = openedBook.locations.save();
+      const cur = rendition?.currentLocation();
+      if (cur?.start?.cfi) {
+        b.progress = Math.max(0, Math.min(100, openedBook.locations.percentageFromCfi(cur.start.cfi) * 100));
+        updateReaderStatus(cur);
+      }
+      save();
+    }).catch(() => {});
 
-    if (!openedBook.locations.length()) {
-      openedBook.locations.generate(600).then(() => {
-        if (!active()) return;
-        b.locations = openedBook.locations.save();
-        save();
-        const cur = rendition?.currentLocation();
-        if (cur) updateReaderStatus(cur);
-      }).catch(() => {});
-    }
-
-    openedBook.loaded.navigation.then(nav => prepareBookChapters(openedBook, nav)).catch(() => {});
     activity = Date.now();
   } catch (e) {
     if (!active()) return;
@@ -849,7 +875,18 @@ function applyAppearance() {
   document.body.classList.toggle('dark', dark);
   const viewer = $('#viewer');
   if (viewer) viewer.style.maxWidth = prefs.width + 'px';
+  const headingColor = dark ? (prefs.theme === 'oled' ? '#ffffff' : '#f0f5ee') : (prefs.theme === 'sepia' ? '#332314' : (prefs.theme === 'light' ? '#173e4d' : '#234433'));
+  const linkColor = dark ? '#8dc58b' : (prefs.theme === 'sepia' ? '#8a5c2d' : '#2c6d48');
+  const cardBg = dark ? (prefs.theme === 'oled' ? '#141414' : '#27312a') : (prefs.theme === 'sepia' ? '#ede2cb' : (prefs.theme === 'light' ? '#f4f7f8' : '#eef3eb'));
+  const cardBorder = dark ? (prefs.theme === 'oled' ? '#333333' : '#3f4e43') : (prefs.theme === 'sepia' ? '#d8c7ad' : '#cdd8da');
+  const noticeBg = dark ? (prefs.theme === 'oled' ? '#231e13' : '#2c271b') : (prefs.theme === 'sepia' ? '#faedd3' : '#fff6db');
+  const noticeBorder = '#d49b29';
+
   rendition?.themes.default({
+    html: {
+      'background': bg + ' !important',
+      'color': fg + ' !important'
+    },
     body: {
       'background': bg + ' !important',
       'color': fg + ' !important',
@@ -862,12 +899,36 @@ function applyAppearance() {
       'word-spacing': prefs.word + 'px !important',
       'text-align': prefs.align + ' !important'
     },
+    'h1, h2, h3, h4, h5, h6, dt': {
+      'color': headingColor + ' !important'
+    },
     'p': {
       'line-height': prefs.line + ' !important',
-      'margin-bottom': prefs.paragraph + 'em !important'
+      'margin-bottom': prefs.paragraph + 'em !important',
+      'color': fg + ' !important'
     },
     'a': {
-      'color': '#4e7b4d !important'
+      'color': linkColor + ' !important'
+    },
+    '.card, .template, blockquote, pre': {
+      'background': cardBg + ' !important',
+      'color': fg + ' !important',
+      'border-color': cardBorder + ' !important'
+    },
+    '.notice': {
+      'background': noticeBg + ' !important',
+      'color': fg + ' !important',
+      'border-left-color': noticeBorder + ' !important'
+    },
+    '.meta, small, .pending, .eyebrow': {
+      'color': (dark ? '#a9b7a8' : (prefs.theme === 'sepia' ? '#705943' : '#556557')) + ' !important'
+    },
+    'table, th, td': {
+      'color': fg + ' !important',
+      'border-color': cardBorder + ' !important'
+    },
+    'hr': {
+      'border-color': cardBorder + ' !important'
     }
   });
 }

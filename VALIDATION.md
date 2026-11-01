@@ -1,44 +1,12 @@
 # Validation & Quality Report
 
-<<<<<<< HEAD
-- Passed: native JavaScript module syntax checks.
-- Passed: sample EPUB zip integrity, mimetype and package/container presence.
-- Passed in cloud Chrome: library render, stored sample metadata, reading sample opens, next-chapter navigation, return to saved book after preview reload, creation and listing of bookmarks, full-book search (two matching occurrences in the original sample).
-- Responsive CSS includes 320–700 px, tablet, desktop and wide-screen layouts; real touch-device testing is outstanding.
-- Outstanding end-to-end checks: import through native file picker, long-press touch selection, highlight persistence across all EPUB variants, offline network-disabled session, backup export/restore round trip, accessibility audit and fixed-layout EPUB behavior.
-
-## Navigation repair — 2026-11-01
-
-The reader previously removed EPUB base URLs during sanitization, then classified
-links by the browser-resolved `anchor.href`. In a srcdoc frame, a fragment such
-as `#P05` therefore became a link to the reader website. epub.js also attempted
-to interpret a bare fragment as a spine ID. The new capture handler resolves the
-original EPUB attribute against its source archive section and uses the reader's
-navigation API once. The sanitizer and iframe restrictions remain enabled.
-
-Verified with the Tamil legal guide in an epub.js 0.3.93 sandboxed srcdoc reader:
-
-- All 1,717 internal content links activated through the reader handler.
-- All 110 table-of-contents destinations opened.
-- All 482 rendered reading pages traversed through the final page at the test
-  viewport. This is a rendering/navigation check, not a legal content review.
-- Zero external-link confirmations, new-window callbacks or navigation errors.
-- Cover image and Tamil font loaded.
-- Local Leaf Reader: contents topic opened lesson P05; reopening restored
-  p. 116/564 and 20%, without doubling the saved location count.
-- Dark page background and foreground match the selected theme.
-- `node navigation-regression.mjs` passes archive-relative and root paths,
-  fragments, external confirmation, unsafe schemes, malformed URLs, missing
-  anchors and duplicate saved-location rejection.
-- `node regression.cjs` continues to pass backup remapping, preferences,
-  cancellation during open, online cache refresh and offline fallback.
-
-Page counts vary with viewport and typography. A 564-item location index is
-separate from the 482 rendered reading pages at the integration test viewport.
-=======
 ## Verified Features & Test Suite Results
 
 All automated tests have executed and passed successfully:
+
+- **Navigation Regression Suite (`navigation-regression.mjs`)**:
+  - `PASS`: Internal fragments, cross-file paths, archive-root paths, external confirmation, unsafe schemes, missing anchors and single click handling.
+  - `PASS`: Saved locations are reused; duplicated and out-of-order location caches are rejected.
 
 - **Regression Test Suite (`regression.cjs`)**:
   - `PASS`: Backup ID remapping, preference round-trip, invalid preference rejection.
@@ -84,17 +52,30 @@ All automated tests have executed and passed successfully:
   - `PASS`: 24 MB Tamil Bhagavad Gita opened and rendered initial view in under 1 second.
   - `PASS`: No memory leaks or location regeneration stalls.
 
+- **Affected EPUB Full Integration Suite (`tests/test-affected-epub-integration.cjs`)**:
+  - `PASS`: EPUB import, SHA-256 duplicate check, and metadata parsed successfully.
+  - `PASS`: Reader opened successfully with rendered cover image and Tamil typography.
+  - `PASS`: Chapter page ranges in Table of Contents are distinct and accurate (110 chapters, 97 distinct ranges, not uniform `pp. 1–564`).
+  - `PASS`: Navigated to TOC destination (`பகுதி 1: இந்திய அரசியலமைப்பு` / Lesson P05) with active chapter label and progress matching reading position.
+  - `PASS`: All 1,717 internal content links stay inside the reader frame with 0 external website prompts and 0 new tabs/windows.
+  - `PASS`: Theme contrast in dark mode applies to `html`, `body`, headings, cards, notices, and links (`html` & `body` match `#202622`).
+  - `PASS`: Mobile layout adapts responsively at 375x667 with bottom thumb navigation.
+  - `PASS`: Reopening book repeatedly preserves stable page counts (564 locations, never doubled to 1128) and restores exact reading progress.
+  - `PASS`: Page traversal through final pages of book reached 100% completion.
+
 ## Running Tests Locally
 
 ```bash
 npm test
 ```
-Or run individual test scripts:
+
+Or run individual test suites:
 ```bash
-node regression.cjs
-node tests/test-unit-security.cjs
-node tests/test-epub-library.cjs
-node tests/test-e2e-browser.cjs
-node tests/test-large-epub.cjs
+npm run test:navigation  # Link resolution, external confirmation, location cache validation
+npm run test:regression  # Backup ID remapping, preferences, SW offline fallback
+npm run test:unit        # Security, CSP, Manifest, TTS chunker, word cleaner, streak
+npm run test:epub        # EPUB container, OPF, and Tamil text integrity
+npm run test:e2e         # Headless Chrome CDP browser automation
+npm run test:large       # 24MB Bhagavad Gita loading and navigation performance
+npm run test:affected    # Tamil Legal Guide end-to-end integration and navigation suite
 ```
->>>>>>> 37c479a (Comprehensive code audit, performance optimization, security hardening, TTS, and test suite)

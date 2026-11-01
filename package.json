@@ -3,13 +3,14 @@
   "version": "1.1.0",
   "description": "Leaf Reader — A tranquil, distraction-free, local-first EPUB reader.",
   "scripts": {
-    "test": "node navigation-regression.mjs && node regression.cjs && node tests/test-unit-security.cjs && node tests/test-epub-library.cjs && node tests/test-e2e-browser.cjs && node tests/test-large-epub.cjs",
+    "test": "node navigation-regression.mjs && node regression.cjs && node tests/test-unit-security.cjs && node tests/test-epub-library.cjs && node tests/test-e2e-browser.cjs && node tests/test-large-epub.cjs && node tests/test-affected-epub-integration.cjs",
     "test:navigation": "node navigation-regression.mjs",
     "test:regression": "node regression.cjs",
     "test:unit": "node tests/test-unit-security.cjs",
     "test:epub": "node tests/test-epub-library.cjs",
     "test:e2e": "node tests/test-e2e-browser.cjs",
-    "test:large": "node tests/test-large-epub.cjs"
+    "test:large": "node tests/test-large-epub.cjs",
+    "test:affected": "node tests/test-affected-epub-integration.cjs"
   },
   "keywords": [
     "epub",

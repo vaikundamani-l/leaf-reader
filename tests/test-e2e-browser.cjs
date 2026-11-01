@@ -40,8 +40,14 @@ async function runE2ETests() {
   const tmpDir = path.join('/tmp', 'leaf-e2e-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const chromeProc = spawn('google-chrome', [
+  const chromeBin = process.env.CHROME_BIN || (process.platform === 'linux' ? ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'].find(b => {
+    try { require('child_process').execSync(`which ${b}`, { stdio: 'ignore' }); return true; } catch { return false; }
+  }) || 'google-chrome' : 'google-chrome');
+
+  const chromeProc = spawn(chromeBin, [
     '--headless=new',
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
     `--remote-debugging-port=${CHROME_PORT}`,
     `--user-data-dir=${tmpDir}`,
     '--no-first-run',

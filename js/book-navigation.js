@@ -38,10 +38,18 @@ export function installBookLinks(doc,section,book,rendition,{confirmExternal,ope
   }else if(link.kind==='internal'){
    if(link.fragment&&link.section?.index===section.index){
     let id;try{id=decodeURIComponent(link.fragment)}catch{showError('This book link has an invalid destination.');return}
-    if(!doc.getElementById(id)){showError('This link does not point to a page in this book.');return}
+    let targetEl=doc.getElementById(id)||doc.getElementById(link.fragment);
+    if(!targetEl&&doc.querySelector){
+     try{targetEl=doc.querySelector(`a[name="${CSS.escape(id)}"]`)||doc.querySelector(`a[name="${CSS.escape(link.fragment)}"]`)}catch{}
+    }
+    if(!targetEl){showError('This link does not point to a page in this book.');return}
    }
    Promise.resolve().then(()=>rendition.display(link.target)).catch(error=>showError(error.message||'Unable to open this book page.'));
-  }else if(link.kind==='missing')showError('This link does not point to a page in this book.');
+  }else if(link.kind==='missing'){
+   showError('This link does not point to a page in this book.');
+  }else if(link.kind==='blocked'){
+   showError('This link has an unsupported or invalid address.');
+  }
  };
  doc.addEventListener('click',click,true);
  return()=>doc.removeEventListener('click',click,true);
@@ -61,7 +69,15 @@ export async function prepareBookChapters(book,nav){
    const loaded=await documents.get(section.index);
    const doc=loaded.ownerDocument||loaded;
    const fragment=entry.href.split('#').slice(1).join('#');
-   const target=fragment?doc.getElementById(decodeURIComponent(fragment)):doc.body;
+   let target=null;
+   if(fragment){
+    let id=fragment;try{id=decodeURIComponent(fragment)}catch{}
+    target=doc.getElementById(id)||doc.getElementById(fragment);
+    if(!target&&doc.querySelector){
+     try{target=doc.querySelector(`a[name="${CSS.escape(id)}"]`)||doc.querySelector(`a[name="${CSS.escape(fragment)}"]`)}catch{}
+    }
+   }
+   if(!target)target=doc.body||doc.documentElement;
    if(target)positions.push({...entry,cfi:section.cfiFromElement(target),spineIndex:section.index});
   }catch{}
  }

@@ -25,9 +25,11 @@ jobs:
           node-version: 22
       - name: Run Quality & Regression Tests
         run: |
+          node navigation-regression.mjs
           node regression.cjs
           node tests/test-unit-security.cjs
           node tests/test-epub-library.cjs
+          node tests/test-affected-epub-integration.cjs
       - name: Collect static app
         run: |
           mkdir _site
