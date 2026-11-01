@@ -48,6 +48,7 @@ async function runE2ETests() {
     '--headless=new',
     '--no-sandbox',
     '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
     `--remote-debugging-port=${CHROME_PORT}`,
     `--user-data-dir=${tmpDir}`,
     '--no-first-run',

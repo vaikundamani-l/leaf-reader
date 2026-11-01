@@ -59,6 +59,7 @@ async function runAffectedEpubIntegration() {
     '--headless=new',
     '--no-sandbox',
     '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
     `--remote-debugging-port=${CHROME_PORT}`,
     `--user-data-dir=${tmpDir}`,
     '--window-size=1280,800',
