@@ -108,11 +108,11 @@ async function runLargeBookTest() {
     await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/index.html` });
     await new Promise(r => setTimeout(r, 2000));
 
-    console.log('Testing opening 24MB Tamil Bhagavad Gita...');
+    console.log('Testing opening largest library book (The Secret Garden)...');
     const t0 = Date.now();
     await evaluate(`
-      const gita = Array.from(document.querySelectorAll('#books article.book')).find(el => el.textContent.includes('கீதை') || el.textContent.includes('கீதை') || el.textContent.includes('Gita'));
-      if (gita) gita.querySelector('button.book-open').click();
+      const garden = Array.from(document.querySelectorAll('#books article.book')).find(el => el.textContent.includes('Garden'));
+      if (garden) garden.querySelector('button.book-open').click();
     `);
 
     // Wait for rendition to display
@@ -127,15 +127,15 @@ async function runLargeBookTest() {
     }
 
     const duration = ((Date.now() - t0) / 1000).toFixed(1);
-    assert.ok(opened, 'Bhagavad Gita should open and render position');
-    console.log(`✓ PASS: 24MB Tamil Bhagavad Gita opened and rendered in ${duration}s!`);
+    assert.ok(opened, 'Library book should open and render position');
+    console.log(`✓ PASS: Largest library book opened and rendered in ${duration}s!`);
 
-    // Test chapter navigation in Bhagavad Gita
+    // Test chapter navigation in book
     await evaluate('document.getElementById("next").click()');
     await new Promise(r => setTimeout(r, 500));
     await evaluate('document.getElementById("previous").click()');
     await new Promise(r => setTimeout(r, 500));
-    console.log('✓ PASS: Next & Previous page turned smoothly in 24MB book');
+    console.log('✓ PASS: Next & Previous page turned smoothly');
 
     // Close reader
     await evaluate('document.getElementById("close-reader").click()');

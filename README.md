@@ -8,7 +8,7 @@ Live Demo: https://vaikundamani-l.github.io/leaf-reader/
 
 ### 📖 Reading Experience
 - **Multi-file EPUB Import**: Drag and drop or file picker import with SHA-256 duplicate detection, zip-slip/zip-bomb protection, and cover extraction.
-- **Fast Large Book Engine**: Optimized location caching enables 24MB+ EPUBs (e.g. Bhagavad Gita) to open in under 1 second.
+- **Fast Large Book Engine**: Optimized location caching enables large EPUBs to open in under 1 second.
 - **Fluid Navigation**: Next/Previous buttons, keyboard shortcuts (`ArrowLeft`/`ArrowRight`, `PageUp`/`PageDown`, `Space`, `g` jump), mobile swipe gestures, and edge tap zones (18% margin taps).
 - **Table of Contents & Bookmarks**: Dynamic TOC with active chapter highlighting, page number ranges, and instant jump.
 - **Custom Appearance**: Paper, Light, Sepia, Dark, OLED, and Custom themes with font family, font size, weight, line height, letter spacing, paragraph margins, and alignment controls. Single-page and two-page spread layouts.
@@ -68,7 +68,7 @@ npm run test:regression  # Backup ID remapping, preferences, SW offline fallback
 npm run test:unit        # Security, CSP, Manifest, TTS chunker, word cleaner, streak
 npm run test:epub        # EPUB container, OPF, and Tamil text integrity
 npm run test:e2e         # Headless Chrome CDP browser automation
-npm run test:large       # 24MB Bhagavad Gita loading and navigation performance
+npm run test:large       # Large EPUB loading and navigation performance
 ```
 
 ## Deployment on GitHub Pages

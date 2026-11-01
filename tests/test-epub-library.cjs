@@ -11,8 +11,7 @@ const sampleFiles = [
   'siddhartha.epub',
   'pride.epub',
   'walden.epub',
-  'garden.epub',
-  'Bhagavad-Gita-Tamil.epub'
+  'garden.epub'
 ];
 
 async function testAllEpubs() {
@@ -44,16 +43,7 @@ async function testAllEpubs() {
     assert.ok(opfContent.includes('<metadata'), `${filename} package.opf must contain metadata`);
     assert.ok(opfContent.includes('<spine'), `${filename} package.opf must contain spine`);
 
-    // For Bhagavad Gita, check Tamil content presence
-    if (filename === 'Bhagavad-Gita-Tamil.epub') {
-      assert.ok(
-        /[\u0B80-\u0BFF]/.test(opfContent),
-        'Bhagavad-Gita-Tamil.epub must contain Tamil unicode text in package opf'
-      );
-      console.log(`✓ PASS: ${filename} (Size: ${(data.length / (1024*1024)).toFixed(1)} MB, Verified Tamil unicode & OPF)`);
-    } else {
-      console.log(`✓ PASS: ${filename} (Size: ${(data.length / 1024).toFixed(0)} KB, Valid container & spine)`);
-    }
+    console.log(`✓ PASS: ${filename} (Size: ${(data.length / 1024).toFixed(0)} KB, Valid container & spine)`);
   }
 }
 

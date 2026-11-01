@@ -63,8 +63,7 @@ const demos = [
   { id: 'demo-pride', title: 'Pride and Prejudice', author: 'Jane Austen', color: '#e3d5c7', symbol: '❦', path: 'pride.epub' },
   { id: 'demo-alice', title: 'Alice’s Adventures in Wonderland', author: 'Lewis Carroll', color: '#b1c4ca', symbol: '♠', path: 'alice.epub' },
   { id: 'demo-room', title: 'The Art of Slowing Down', author: 'Leaf Reader', color: '#d6bbad', symbol: '◒', path: 'room.epub' },
-  { id: 'demo-siddhartha', title: 'Siddhartha', author: 'Hermann Hesse', color: '#d3bc7b', symbol: '☼', path: 'siddhartha.epub' },
-  { id: 'demo-gita', title: 'பகவத் கீதை', author: 'சி. சுப்ரமணிய பாரதியார்', color: '#c27b38', ink: '#fff9ee', symbol: 'ॐ', path: 'Bhagavad-Gita-Tamil.epub', language: 'ta' }
+  { id: 'demo-siddhartha', title: 'Siddhartha', author: 'Hermann Hesse', color: '#d3bc7b', symbol: '☼', path: 'siddhartha.epub' }
 ].map(b => ({ ...b, demo: true, progress: 0, added: 0 }));
 
 function toast(t) {

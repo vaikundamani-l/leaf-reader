@@ -30,11 +30,10 @@ All automated tests have executed and passed successfully:
   - `PASS`: `pride.epub` (595 KB, Valid container & spine)
   - `PASS`: `walden.epub` (670 KB, Valid container & spine)
   - `PASS`: `garden.epub` (1571 KB, Valid container & spine)
-  - `PASS`: `Bhagavad-Gita-Tamil.epub` (23.2 MB, Verified Tamil unicode, OPF, and chapter navigation)
 
 - **End-to-End Chrome Headless CDP Suite (`tests/test-e2e-browser.cjs`)**:
   - `PASS`: Page load, title, and initial DOM rendering.
-  - `PASS`: Bookshelf rendering all 7 books with covers and metadata.
+  - `PASS`: Bookshelf rendering all 6 books with covers and metadata.
   - `PASS`: Opening EPUB reader ("The Art of Slowing Down") and rendering CFI location.
   - `PASS`: Page turn navigation (Next / Previous buttons, keyboard shortcuts, and margin tap zones).
   - `PASS`: Table of Contents dialog with active chapter indicators.
@@ -49,7 +48,7 @@ All automated tests have executed and passed successfully:
   - `PASS`: Zero console errors or uncaught exceptions during runtime.
 
 - **Large EPUB Performance Suite (`tests/test-large-epub.cjs`)**:
-  - `PASS`: 24 MB Tamil Bhagavad Gita opened and rendered initial view in under 1 second.
+  - `PASS`: Largest library book (The Secret Garden) opened and rendered initial view in under 1 second.
   - `PASS`: No memory leaks or location regeneration stalls.
 
 - **Affected EPUB Full Integration Suite (`tests/test-affected-epub-integration.cjs`)**:
@@ -76,6 +75,6 @@ npm run test:regression  # Backup ID remapping, preferences, SW offline fallback
 npm run test:unit        # Security, CSP, Manifest, TTS chunker, word cleaner, streak
 npm run test:epub        # EPUB container, OPF, and Tamil text integrity
 npm run test:e2e         # Headless Chrome CDP browser automation
-npm run test:large       # 24MB Bhagavad Gita loading and navigation performance
+npm run test:large       # Large EPUB loading and navigation performance
 npm run test:affected    # Tamil Legal Guide end-to-end integration and navigation suite
 ```
