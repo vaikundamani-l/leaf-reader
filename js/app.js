@@ -839,8 +839,11 @@ async function openBook(b) {
         b.progress = Math.max(0, Math.min(100, openedBook.locations.percentageFromCfi(cur.start.cfi) * 100));
         updateReaderStatus(cur);
       }
-      if (!restoredLocations && openedBook.leafLocationsReady && $('#dialog')?.open) {
-        $('#jump-page-form')?.dispatchEvent(new Event('leaf:locations-ready'));
+      if ($('#dialog')?.open) {
+        if (!restoredLocations && openedBook.leafLocationsReady) {
+          $('#jump-page-form')?.dispatchEvent(new Event('leaf:locations-ready'));
+        }
+        $('.toc-list')?.dispatchEvent(new Event('leaf:locations-ready'));
       }
       save();
     })().catch(() => {});
@@ -1065,34 +1068,51 @@ if (tocBtn) {
   tocBtn.onclick = async () => {
     const d = dialog('Chapters & bookmarks');
     d.className = 'stack';
-    d.append(btn('📄 Jump to page number…', jumpPageDialog));
-    const nav = await book.loaded.navigation;
-    const currentLoc = rendition?.currentLocation();
-    const activeChapter = getActiveChapter(book, nav, currentLoc);
-    const chapters = getTocWithPages(book, nav);
+    const jump = btn('📄 Jump to page number…', jumpPageDialog);
+    d.append(jump);
+    const tocBook = book;
+    if (!tocBook) return;
+    const nav = await tocBook.loaded.navigation;
+    if (book !== tocBook || !$('#dialog')?.open || !jump.isConnected) return;
     const listContainer = el('div', undefined, 'toc-list');
-    for (const item of chapters) {
-      const isCurrent = activeChapter && (item.href === activeChapter.href || item.label === activeChapter.label);
-      const itemBtn = el('button', undefined, 'chapter-item' + (isCurrent ? ' active' : ''));
-      itemBtn.setAttribute('role', 'button');
-      if (isCurrent) itemBtn.setAttribute('aria-current', 'true');
+    const indexStatus = el('p', 'Preparing chapter page ranges…', 'muted');
+    indexStatus.setAttribute('role', 'status');
+    const entries = getFlatToc(nav?.toc);
+    const rows = entries.map(item => {
+      const itemBtn = el('button', undefined, 'chapter-item');
       const main = el('div', undefined, 'chapter-main');
       if (item.depth > 0) main.style.paddingLeft = (item.depth * 18) + 'px';
-      main.append(el('span', item.label, 'chapter-label'));
-      if (isCurrent) {
-        const badge = el('span', '● Current', 'chapter-badge');
-        badge.setAttribute('aria-label', 'Current chapter');
-        main.append(badge);
-      }
-      itemBtn.append(main);
-      if (item.pageRange) itemBtn.append(el('span', item.pageRange, 'chapter-pages'));
+      const badge = el('span', '● Current', 'chapter-badge');
+      badge.setAttribute('aria-label', 'Current chapter');
+      main.append(el('span', item.label, 'chapter-label'), badge);
+      const pages = el('span', undefined, 'chapter-pages');
+      itemBtn.append(main, pages);
       itemBtn.onclick = () => {
         rendition?.display(item.href);
         $('#dialog')?.close();
       };
       listContainer.append(itemBtn);
+      return { itemBtn, badge, pages };
+    });
+    function updateToc() {
+      const ready = tocBook.leafLocationsReady && Boolean(tocBook.leafChapterPositions);
+      indexStatus.hidden = ready || !entries.length;
+      const chapters = ready ? getTocWithPages(tocBook, nav) : entries;
+      const activeChapter = getActiveChapter(tocBook, nav, rendition?.currentLocation());
+      chapters.forEach((item, i) => {
+        const { itemBtn, badge, pages } = rows[i];
+        const isCurrent = item.href === activeChapter?.href;
+        itemBtn.classList.toggle('active', isCurrent);
+        if (isCurrent) itemBtn.setAttribute('aria-current', 'true');
+        else itemBtn.removeAttribute('aria-current');
+        badge.hidden = !isCurrent;
+        pages.textContent = item.pageRange || '';
+        pages.hidden = !item.pageRange;
+      });
     }
-    d.append(listContainer);
+    listContainer.addEventListener('leaf:locations-ready', updateToc);
+    updateToc();
+    d.append(indexStatus, listContainer);
     d.append(el('h3', 'Your bookmarks'));
     const bms = annotations.filter(a => a.bookId === current.id && a.type === 'bookmark');
     if (!bms.length) {

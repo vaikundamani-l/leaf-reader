@@ -204,7 +204,11 @@ async function runAffectedEpubIntegration() {
 
     console.log('4. Verifying Table of Contents page ranges & destinations...');
     await evaluate(`document.getElementById('toc').click()`);
-    await new Promise(r => setTimeout(r, 500));
+    // The reader renders before background indexing. The open TOC should update in place.
+    for (let i = 0; i < 60; i++) {
+      if (await evaluate('document.querySelector(".toc-list .chapter-pages:not([hidden])") !== null')) break;
+      await new Promise(r => setTimeout(r, 200));
+    }
 
     const tocStats = await evaluate(`
       (() => {
