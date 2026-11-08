@@ -525,6 +525,7 @@ textarea {
   gap: 4px;
   overflow-x: auto;
 }
+#selection-more { display: none; }
 #toast {
   position: fixed;
   bottom: 22px;
@@ -935,19 +936,22 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
     right: 8px;
     bottom: calc(65px + env(safe-area-inset-bottom));
     transform: none;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 2px;
-    overflow-x: auto;
     max-width: none;
     padding: 6px;
     border-radius: 12px;
   }
   #selection button {
-    flex: 0 0 auto;
-    min-height: 42px;
-    padding: 8px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 4px 2px;
     font-size: 11px;
   }
+  #selection-more { display: block; }
+  #selection .selection-extra { display: none; }
+  #selection.expanded .selection-extra { display: block; }
   dialog {
     position: fixed;
     inset: auto 0 0;

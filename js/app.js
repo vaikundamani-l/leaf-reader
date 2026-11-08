@@ -549,12 +549,15 @@ function getActiveChapter(bookInstance, nav, loc) {
 
 async function updateReaderStatus(loc) {
   if (!current || !book) return;
+  const statusBook = book;
+  const statusCurrent = current;
   let chapterName = '';
   try {
-    const nav = await book.loaded.navigation;
-    const activeChapter = getActiveChapter(book, nav, loc);
+    const nav = await statusBook.loaded.navigation;
+    const activeChapter = getActiveChapter(statusBook, nav, loc);
     if (activeChapter?.label) chapterName = activeChapter.label.trim();
   } catch {}
+  if (book !== statusBook || current !== statusCurrent) return;
   current.chapter = chapterName;
   const hasLocs = Boolean(book.locations?.length());
   let pageInfo = '';
@@ -575,74 +578,89 @@ async function updateReaderStatus(loc) {
 }
 
 function jumpPageDialog() {
-  if (!book) return;
-  const total = book.locations?.length() || 0;
+  if (!book || !rendition) return;
+  const jumpBook = book;
+  const jumpRendition = rendition;
   const d = dialog('Go to page');
   d.className = 'stack';
-  let curPage = 1;
-  if (total > 0 && current?.cfi) {
-    const loc = book.locations.locationFromCfi(current.cfi);
-    if (loc >= 0) curPage = loc + 1;
-  }
-  const form = el('form');
-  form.onsubmit = e => { e.preventDefault(); doJump(); };
-  form.className = 'stack';
-  form.append(el('label', total > 0 ? `Enter page number (1 – ${total}):` : 'Enter page number or percentage (0–100%):'));
+
+  const form = el('form', undefined, 'stack');
+  form.id = 'jump-page-form';
+  const mode = el('select');
+  const pageMode = el('option', 'Page');
+  pageMode.value = 'page';
+  const percentMode = el('option', 'Percentage');
+  percentMode.value = 'percent';
+  mode.append(pageMode, percentMode);
+  field(form, 'Jump by', mode);
+
   const input = el('input');
-  input.type = total > 0 ? 'number' : 'text';
-  input.min = '1';
-  if (total > 0) input.max = String(total);
-  input.placeholder = total > 0 ? `e.g. ${curPage}` : 'e.g. 50 or 50%';
-  input.value = String(curPage);
-  input.style.fontSize = '18px';
-  input.style.textAlign = 'center';
-  input.style.padding = '10px';
-  input.style.width = '100%';
-  form.append(input);
+  input.type = 'number';
+  input.inputMode = 'numeric';
+  input.required = true;
+  field(form, 'Destination', input);
+
+  const hint = el('p', undefined, 'muted');
+  hint.setAttribute('role', 'status');
+  form.append(hint);
+
+  const pageCount = () => jumpBook.leafLocationsReady ? jumpBook.locations.length() : 0;
+  function updateLimits() {
+    const total = pageCount();
+    percentMode.disabled = !total;
+    pageMode.textContent = total ? 'Page' : 'Section';
+    const isPercent = mode.value === 'percent';
+    input.min = isPercent ? '0' : '1';
+    input.max = String(isPercent ? 100 : total || jumpBook.spine.length);
+    hint.textContent = total
+      ? (isPercent ? 'Enter a percentage from 0 to 100.' : `Enter a page from 1 to ${total}.`)
+      : 'Pages are being indexed. You can jump to a section in the meantime.';
+  }
+  function fillCurrent() {
+    updateLimits();
+    const loc = jumpRendition.currentLocation();
+    const total = pageCount();
+    const page = total && loc?.start?.cfi ? jumpBook.locations.locationFromCfi(loc.start.cfi) : -1;
+    input.value = String(mode.value === 'percent' ? Math.round(current.progress || 0)
+      : total ? Math.max(1, page + 1) : (loc?.start?.index ?? 0) + 1);
+  }
+  mode.onchange = fillCurrent;
+  form.addEventListener('leaf:locations-ready', fillCurrent);
+  fillCurrent();
+
+  async function jump(destination, byPercent = false) {
+    if (book !== jumpBook || rendition !== jumpRendition) return;
+    const total = pageCount();
+    const target = byPercent
+      ? (total ? jumpBook.locations.cfiFromPercentage(destination / 100) : null)
+      : total ? jumpBook.locations.cfiFromLocation(destination - 1)
+        : jumpBook.spine.get(destination - 1)?.href;
+    if (!target) throw Error('This reading position is unavailable.');
+    await jumpRendition.display(target);
+    if (book === jumpBook && form.isConnected) $('#dialog')?.close();
+  }
+
+  form.onsubmit = safe(async e => {
+    e.preventDefault();
+    await jump(input.valueAsNumber, mode.value === 'percent');
+  });
 
   const quickRow = el('div', undefined, 'swatches');
-  quickRow.style.display = 'flex';
-  quickRow.style.gap = '8px';
-  quickRow.style.justifyContent = 'center';
-  quickRow.append(
-    btn('First page', () => { input.value = '1'; doJump(); }),
-    btn('Middle', () => { input.value = String(Math.floor(total ? total / 2 : 50)); doJump(); }),
-    btn(total ? `Page ${total}` : 'End', () => { input.value = String(total || 100); doJump(); })
-  );
-  form.append(quickRow);
-
-  function doJump() {
-    const val = input.value.trim();
-    if (!val) return;
-    if (val.endsWith('%')) {
-      const pct = parseFloat(val);
-      if (Number.isFinite(pct) && pct >= 0 && pct <= 100) {
-        if (book.locations?.length()) rendition?.display(book.locations.cfiFromPercentage(pct / 100));
-        $('#dialog')?.close();
-        return;
-      }
-    }
-    const p = parseInt(val, 10);
-    if (Number.isFinite(p) && p >= 1) {
-      if (total > 0) {
-        const clamped = Math.max(1, Math.min(total, p));
-        const cfi = book.locations.cfiFromLocation(clamped - 1);
-        if (cfi) rendition?.display(cfi);
-        toast(`Jumped to page ${clamped} of ${total}`);
-      } else if (book.spine?.length) {
-        const clampedSec = Math.max(0, Math.min(book.spine.length - 1, p - 1));
-        const sec = book.spine.get(clampedSec);
-        if (sec) rendition?.display(sec.href);
-      }
-      $('#dialog')?.close();
-    } else {
-      toast('Please enter a valid page number.');
-    }
-  }
-
-  form.append(btn('Go to page →', doJump, 'primary'));
+  const quickJump = (label, fraction) => {
+    const button = btn(label, safe(() => {
+      const total = pageCount() || jumpBook.spine.length;
+      return jump(Math.round((total - 1) * fraction) + 1);
+    }));
+    button.type = 'button';
+    return button;
+  };
+  quickRow.append(quickJump('Start', 0), quickJump('Middle', 0.5), quickJump('End', 1));
+  const submit = btn('Go →', undefined, 'primary');
+  submit.type = 'submit';
+  form.append(quickRow, submit);
   d.append(form);
-  setTimeout(() => { input.focus(); input.select(); }, 50);
+  input.focus();
+  input.select();
 }
 
 async function openBook(b) {
@@ -753,6 +771,7 @@ async function openBook(b) {
     });
 
     rendition.on('selected', (cfi, contents) => {
+      if ($('#selection').hidden || selected?.cfi !== cfi) setSelectionExpanded(false);
       selected = { cfi, text: contents.window.getSelection().toString() };
       $('#selection').hidden = !selected.text;
     });
@@ -785,13 +804,9 @@ async function openBook(b) {
     });
 
     applyAppearance();
-    try {
-      await prepareBookChapters(openedBook, await openedBook.loaded.navigation);
-    } catch {}
-    if (!active()) { openedBook.destroy(); return; }
-
     const cfiCompare = new ePub.CFI();
     const restoredLocations = restoreBookLocations(openedBook, b.locations, (a, z) => cfiCompare.compare(a, z));
+    openedBook.leafLocationsReady = restoredLocations;
     if (!restoredLocations) {
       openedBook.locations._locations = [];
       openedBook.locations.total = 0;
@@ -807,16 +822,28 @@ async function openBook(b) {
       paint(a);
     }
 
-    (restoredLocations ? Promise.resolve() : openedBook.locations.generate(600)).then(() => {
+    (async () => {
+      try {
+        const nav = await openedBook.loaded.navigation;
+        if (!active()) return;
+        await prepareBookChapters(openedBook, nav, active);
+        if (active()) updateReaderStatus(rendition?.currentLocation());
+      } catch {}
       if (!active()) return;
+      if (!restoredLocations) await openedBook.locations.generate(600);
+      if (!active()) return;
+      openedBook.leafLocationsReady = Boolean(openedBook.locations.length());
       b.locations = openedBook.locations.save();
       const cur = rendition?.currentLocation();
       if (cur?.start?.cfi) {
         b.progress = Math.max(0, Math.min(100, openedBook.locations.percentageFromCfi(cur.start.cfi) * 100));
         updateReaderStatus(cur);
       }
+      if (!restoredLocations && openedBook.leafLocationsReady && $('#dialog')?.open) {
+        $('#jump-page-form')?.dispatchEvent(new Event('leaf:locations-ready'));
+      }
       save();
-    }).catch(() => {});
+    })().catch(() => {});
 
     activity = Date.now();
   } catch (e) {
@@ -1128,6 +1155,7 @@ async function addAnnotation(type) {
         swatches.querySelectorAll('button').forEach(x => x.style.transform = '');
         b.style.transform = 'scale(1.25)';
       });
+      b.type = 'button';
       b.style.color = color;
       b.setAttribute('aria-label', 'Highlight color ' + color);
       swatches.append(b);
@@ -1154,7 +1182,9 @@ async function addAnnotation(type) {
       $('#dialog')?.close();
       toast('Note saved');
     };
-    form.append(btn('Save note', undefined, 'primary'));
+    const saveNote = btn('Save note', undefined, 'primary');
+    saveNote.type = 'submit';
+    form.append(saveNote);
     d.append(form);
     setTimeout(() => ta.focus(), 50);
     return;
@@ -1573,6 +1603,14 @@ async function dictionary() {
   lookupBtn.click();
 }
 
+const selectionMore = $('#selection-more');
+function setSelectionExpanded(expanded) {
+  $('#selection').classList.toggle('expanded', expanded);
+  selectionMore.setAttribute('aria-expanded', String(expanded));
+  selectionMore.textContent = expanded ? 'Less' : 'More';
+}
+selectionMore.onclick = () => setSelectionExpanded(selectionMore.getAttribute('aria-expanded') !== 'true');
+
 document.querySelectorAll('[data-selection]').forEach(b => b.onclick = safe(async () => {
   const action = b.dataset.selection;
   if (action === 'bookmark') await addAnnotation('bookmark');
@@ -1609,30 +1647,43 @@ if (searchBookBtn) {
     const input = el('input');
     input.type = 'search';
     input.placeholder = 'Find a word or phrase';
+    input.setAttribute('aria-label', 'Find a word or phrase');
+    input.enterKeyHint = 'search';
     input.style.width = '100%';
     const results = el('div', undefined, 'stack');
     results.style.marginTop = '14px';
+    const searchBook = book;
+    if (!searchBook) return;
+    const form = el('form', undefined, 'stack');
+    const submit = btn('Search', undefined, 'primary');
+    submit.type = 'submit';
     let token = 0;
-    d.append(input, btn('Search', safe(async () => {
+    form.onsubmit = safe(async e => {
+      e.preventDefault();
       const term = input.value.trim();
       if (!term) return;
       const task = ++token;
       results.replaceChildren(el('p', 'Searching chapters…'));
-      let matches = [];
-      for (const section of book.spine.spineItems) {
-        if (task !== token || !$('#dialog')?.open) return;
-        await section.load(book.load.bind(book));
+      const active = () => task === token && book === searchBook && form.isConnected && $('#dialog')?.open;
+      const matches = [];
+      for (const section of searchBook.spine.spineItems) {
+        if (!active()) return;
+        await section.load(searchBook.load.bind(searchBook));
+        if (book !== searchBook) return;
         matches.push(...section.find(term));
         section.unload();
         await new Promise(r => setTimeout(r, 0));
         if (matches.length >= 300) break;
       }
+      if (!active()) return;
       results.replaceChildren(el('p', matches.length + ' matches' + (matches.length >= 300 ? ' (first 300 shown)' : '')));
       matches.slice(0, 300).forEach(m => results.append(btn(m.excerpt, () => {
         rendition?.display(m.cfi);
         $('#dialog')?.close();
       })));
-    }), 'primary'), results);
+    });
+    form.append(input, submit);
+    d.append(form, results);
     input.focus();
   };
 }
