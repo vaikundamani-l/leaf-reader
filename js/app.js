@@ -875,17 +875,6 @@ async function openBook(b, startAt = b.cfi) {
         else rendition?.prev();
       }, { passive: false });
 
-      doc.addEventListener('click', e => {
-        if (e.target.closest?.('a, input, button, select, textarea, [contenteditable]')) return;
-        if (contents.window.getSelection()?.toString() || prefs.flow !== 'paginated') return;
-        const frame = contents.window.frameElement;
-        if (!frame) return;
-        const bounds = $('#viewer').getBoundingClientRect();
-        const x = e.clientX + frame.getBoundingClientRect().left - bounds.left;
-        if (x < bounds.width * 0.18) rendition?.prev();
-        else if (x > bounds.width * 0.82) rendition?.next();
-      });
-
       doc.addEventListener('selectionchange', () => {
         if (!contents.window.getSelection().toString()) $('#selection').hidden = true;
       });

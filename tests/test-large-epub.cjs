@@ -234,6 +234,12 @@ async function runLargeBookTest() {
     const readerPosition = 'document.querySelector("#position").textContent';
     await waitFor(readerPosition + '.includes("வருந்துகிறான்")', 'Reader should be on chapter one');
     const start = await evaluate(readerPosition);
+    for (const x of [30, 363]) {
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: 330 }] });
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await new Promise(resolve => setTimeout(resolve, 400));
+      assert.equal(await evaluate(readerPosition), start, 'Tapping either edge must keep the current page');
+    }
     await swipe(300, 330, 90, 330);
     await waitFor(readerPosition + ' !== ' + JSON.stringify(start), 'Horizontal swipe should advance in Pages mode');
     const afterHorizontal = await evaluate(readerPosition);
