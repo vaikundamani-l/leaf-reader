@@ -9,7 +9,7 @@ Live Demo: https://vaikundamani-l.github.io/leaf-reader/
 ### 📖 Reading Experience
 - **Multi-file EPUB Import**: Drag and drop or file picker import with SHA-256 duplicate detection, zip-slip/zip-bomb protection, and cover extraction.
 - **Fast Large Book Engine**: Optimized location caching enables large EPUBs to open in under 1 second.
-- **Fluid Navigation**: Next/Previous buttons, keyboard shortcuts (`ArrowLeft`/`ArrowRight`, `PageUp`/`PageDown`, `Space`, `g` jump), mobile swipe gestures, and edge tap zones (18% margin taps).
+- **Fluid Navigation**: Next/Previous buttons, keyboard shortcuts (`ArrowLeft`/`ArrowRight`, `PageUp`/`PageDown`, `Space`, `g` jump), and mobile swipe gestures.
 - **Table of Contents & Bookmarks**: Dynamic TOC with active chapter highlighting, page number ranges, and instant jump.
 - **Custom Appearance**: Paper, Light, Sepia, Dark, OLED, and Custom themes with font family, font size, weight, line height, letter spacing, paragraph margins, and alignment controls. Single-page and two-page spread layouts.
 
