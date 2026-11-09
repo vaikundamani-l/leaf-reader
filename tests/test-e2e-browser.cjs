@@ -274,6 +274,81 @@ async function runE2ETests() {
     assert.equal(mobileMoreVisible, true, 'Mobile navigation "More" button should be visible on 375px');
     console.log('✓ PASS: Mobile layout adapted with bottom navigation bar');
 
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 320, height: 640, deviceScaleFactor: 2, mobile: true
+    });
+    async function expectEventually(expression, message) {
+      for (let attempt = 0; attempt < 60; attempt++) {
+        if (await evaluate(expression)) return;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      assert.fail(message);
+    }
+    await evaluate(`
+      [...document.querySelectorAll('#books .book-open')]
+        .find(button => button.textContent.includes('Slowing Down')).click();
+    `);
+    await expectEventually('!document.querySelector("#reader").hidden && document.querySelector("#reader-loading").hidden', 'Reader should render');
+
+    await evaluate('document.querySelector("#position").click()');
+    await expectEventually('!document.querySelector("#jump-page-form option[value=percent]").disabled', 'Percentage mode should become available');
+    await evaluate(`
+      (() => {
+        const form = document.querySelector('#jump-page-form');
+        form.querySelector('select').value = 'percent';
+        form.querySelector('select').dispatchEvent(new Event('change'));
+        form.querySelector('input').value = '50';
+        form.requestSubmit();
+      })()
+    `);
+    await expectEventually('!document.querySelector("#dialog").open', 'Percentage jump should complete');
+
+    await evaluate(`
+      document.querySelector('#search-book').click();
+      document.querySelector('#dialog-body input').value = 'the';
+    `);
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await expectEventually('document.querySelector("#dialog-body").textContent.includes("matches")', 'Enter should submit book search');
+    await evaluate('document.querySelector("#dismiss").click()');
+
+    await evaluate(`
+      (() => {
+        const doc = document.querySelector('#viewer iframe').contentDocument;
+        const text = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        while (text.nextNode()) {
+          if (!text.currentNode.textContent.trim()) continue;
+          const range = doc.createRange();
+          range.selectNodeContents(text.currentNode);
+          doc.getSelection().removeAllRanges();
+          doc.getSelection().addRange(range);
+          break;
+        }
+      })()
+    `);
+    await expectEventually('!document.querySelector("#selection").hidden', 'Selecting EPUB text should show its toolbar');
+    const toolbar = await evaluate(`
+      (() => {
+        const bar = document.querySelector('#selection');
+        return {
+          labels: [...bar.querySelectorAll('button')].filter(b => b.getClientRects().length).map(b => b.textContent),
+          fits: bar.scrollWidth <= bar.clientWidth
+        };
+      })()
+    `);
+    assert.deepEqual(toolbar, { labels: ['Highlight', 'Note', 'Translate', 'More'], fits: true });
+    await evaluate('document.querySelector("#selection-more").click()');
+    assert.equal(await evaluate('document.querySelector("[data-selection=dictionary]").getClientRects().length > 0'), true);
+    await evaluate(`
+      document.querySelector('[data-selection=note]').click();
+      document.querySelector('#dialog-body textarea').value = 'Mobile note regression test';
+      document.querySelectorAll('#dialog-body .swatches button')[1].click();
+    `);
+    assert.equal(await evaluate('document.querySelector("#dialog").open'), true, 'Selecting a color must leave the note editor open');
+    await evaluate('document.querySelector("#dialog-body button[type=submit]").click()');
+    await expectEventually('!document.querySelector("#dialog").open', 'Save note should submit the form');
+    console.log('✓ PASS: Mobile percentage jump, keyboard search, selection toolbar, and note color');
+
     // Check for JavaScript console errors
     console.log('\n--- JAVASCRIPT CONSOLE AUDIT ---');
     if (consoleErrors.length > 0) {

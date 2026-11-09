@@ -72,15 +72,16 @@
   </section>
 
   <div id="selection" hidden role="toolbar" aria-label="Text selection actions">
-    <button data-selection="copy">Copy</button>
     <button data-selection="highlight">Highlight</button>
     <button data-selection="note">Note</button>
     <button data-selection="translate">Translate</button>
-    <button data-selection="dictionary">Dictionary</button>
-    <button data-selection="speak">Listen</button>
-    <button data-selection="bookmark">Bookmark</button>
-    <button data-selection="search">Search</button>
-    <button data-selection="share">Share</button>
+    <button id="selection-more" type="button" aria-expanded="false">More</button>
+    <button class="selection-extra" data-selection="copy">Copy</button>
+    <button class="selection-extra" data-selection="dictionary">Dictionary</button>
+    <button class="selection-extra" data-selection="speak">Listen</button>
+    <button class="selection-extra" data-selection="bookmark">Bookmark</button>
+    <button class="selection-extra" data-selection="search">Search</button>
+    <button class="selection-extra" data-selection="share">Share</button>
   </div>
 
   <dialog id="dialog" aria-labelledby="dialog-title" aria-modal="true">

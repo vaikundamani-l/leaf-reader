@@ -55,18 +55,20 @@ export function installBookLinks(doc,section,book,rendition,{confirmExternal,ope
  return()=>doc.removeEventListener('click',click,true);
 }
 
-export async function prepareBookChapters(book,nav){
+export async function prepareBookChapters(book,nav,active=()=>true){
  const entries=[];
  const visit=items=>{for(const item of items||[]){entries.push({...item});visit(item.subitems)}};
  visit(nav?.toc);
  const documents=new Map();
  const positions=[];
  for(const entry of entries){
+  if(!active())return;
   const section=book.spine.get(entry.href);
   if(!section)continue;
   try{
    if(!documents.has(section.index))documents.set(section.index,section.load(book.load.bind(book)));
    const loaded=await documents.get(section.index);
+   if(!active())return;
    const doc=loaded.ownerDocument||loaded;
    const fragment=entry.href.split('#').slice(1).join('#');
    let target=null;
