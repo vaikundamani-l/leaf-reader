@@ -84,8 +84,19 @@ function dialog(title) {
   if (bodyEl) bodyEl.replaceChildren();
   const d = $('#dialog');
   if (d && !d.open) d.showModal();
+  sizeMobileDialog();
   return bodyEl;
 }
+
+function sizeMobileDialog() {
+  const viewport = window.visualViewport;
+  const modal = $('#dialog');
+  if (!viewport || !modal?.open) return;
+  modal.style.setProperty('--dialog-bottom', Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) + 'px');
+  modal.style.setProperty('--dialog-viewport-height', viewport.height + 'px');
+}
+window.visualViewport?.addEventListener('resize', sizeMobileDialog);
+window.visualViewport?.addEventListener('scroll', sizeMobileDialog);
 
 function btn(t, fn, cls) {
   const b = el('button', t, cls);
@@ -736,33 +747,42 @@ async function openBook(b) {
       doc.addEventListener('keydown', keys);
       doc.addEventListener('pointerdown', () => { activity = Date.now(); });
 
-      let touchStart = null;
+      updateReadingGestures(contents);
+      let touchStart;
       doc.addEventListener('touchstart', e => {
-        if (e.touches.length === 1) touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-        else touchStart = null;
+        const touch = e.touches.length === 1 ? e.touches[0] : null;
+        touchStart = touch && { id: touch.identifier, x: touch.clientX, y: touch.clientY };
       }, { passive: true });
-
+      doc.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
       doc.addEventListener('touchend', e => {
-        if (!touchStart || prefs.flow !== 'paginated' || contents.window.getSelection().toString() || e.target.closest('a,input,button')) return;
-        const t = e.changedTouches[0], dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
-        if (Date.now() - touchStart.t < 450 && Math.abs(dx) > 70 && Math.abs(dy) < 50) {
-          dx < 0 ? rendition?.next() : rendition?.prev();
-        }
+        const start = touchStart;
         touchStart = null;
-      }, { passive: true });
+        if (!start || e.touches.length || !active() || contents.window.getSelection()?.toString()) return;
+        if (e.target.closest?.('input, button, select, textarea, [contenteditable]')) return;
+        const touch = Array.from(e.changedTouches).find(t => t.identifier === start.id);
+        if (!touch) return;
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        const horizontal = Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.5;
+        const vertical = prefs.flow === 'paginated' && Math.abs(dy) >= 48 && Math.abs(dy) > Math.abs(dx) * 1.5;
+        if (!horizontal && !vertical) return;
+        if (e.cancelable) e.preventDefault();
+        activity = Date.now();
+        const rtl = openedBook.package?.metadata?.direction === 'rtl';
+        const forward = horizontal ? (rtl ? dx > 0 : dx < 0) : dy < 0;
+        if (forward) rendition?.next();
+        else rendition?.prev();
+      }, { passive: false });
 
       doc.addEventListener('click', e => {
-        if (e.target.closest('a')) return;
-        if (contents.window.getSelection().toString()) return;
-        const width = contents.window.innerWidth;
-        const clickX = e.clientX;
-        if (prefs.flow === 'paginated') {
-          if (clickX < width * 0.18) {
-            rendition?.prev();
-          } else if (clickX > width * 0.82) {
-            rendition?.next();
-          }
-        }
+        if (e.target.closest?.('a, input, button, select, textarea, [contenteditable]')) return;
+        if (contents.window.getSelection()?.toString() || prefs.flow !== 'paginated') return;
+        const frame = contents.window.frameElement;
+        if (!frame) return;
+        const bounds = $('#viewer').getBoundingClientRect();
+        const x = e.clientX + frame.getBoundingClientRect().left - bounds.left;
+        if (x < bounds.width * 0.18) rendition?.prev();
+        else if (x > bounds.width * 0.82) rendition?.next();
       });
 
       doc.addEventListener('selectionchange', () => {
@@ -860,6 +880,7 @@ async function openBook(b) {
 
 function closeReader() {
   readerRequest++;
+  if (document.fullscreenElement === document.documentElement) document.exitFullscreen()?.catch(() => {});
   $('#reader').hidden = true;
   document.body.style.overflow = '';
   selected = null;
@@ -883,7 +904,17 @@ if (prevBtn) prevBtn.onclick = () => { activity = Date.now(); rendition?.prev();
 const nextBtn = $('#next');
 if (nextBtn) nextBtn.onclick = () => { activity = Date.now(); rendition?.next(); };
 const focusBtn = $('#focus');
-if (focusBtn) focusBtn.onclick = () => document.fullscreenElement ? document.exitFullscreen() : $('#reader')?.requestFullscreen?.();
+if (focusBtn) {
+  focusBtn.hidden = !document.fullscreenEnabled;
+  focusBtn.setAttribute('aria-pressed', 'false');
+  focusBtn.onclick = safe(() => document.fullscreenElement
+    ? document.exitFullscreen()
+    : document.documentElement.requestFullscreen());
+  document.addEventListener('fullscreenchange', () => {
+    focusBtn.setAttribute('aria-pressed', String(Boolean(document.fullscreenElement)));
+    sizeMobileDialog();
+  });
+}
 
 const posEl = $('#position');
 if (posEl) {
@@ -892,6 +923,12 @@ if (posEl) {
   posEl.setAttribute('role', 'button');
   posEl.setAttribute('aria-label', 'Jump to page number or percentage');
   posEl.onkeydown = e => { if (e.key === 'Enter') posEl.click(); };
+}
+
+function updateReadingGestures(contents) {
+  const action = prefs.flow === 'paginated' ? 'pinch-zoom' : 'pan-y pinch-zoom';
+  contents.document.documentElement.style.touchAction = action;
+  contents.document.body.style.touchAction = action;
 }
 
 function applyAppearance() {
@@ -929,6 +966,24 @@ function applyAppearance() {
       'letter-spacing': prefs.letter + 'px !important',
       'word-spacing': prefs.word + 'px !important',
       'text-align': prefs.align + ' !important'
+    },
+    'figure': {
+      'margin-inline': '0 !important',
+      'max-inline-size': '100%',
+      'break-inside': 'avoid'
+    },
+    'img': {
+      'max-inline-size': '100% !important',
+      'object-fit': 'contain'
+    },
+    'figure img': {
+      'block-size': 'auto !important'
+    },
+    '.verseindex a': {
+      'display': 'inline-block',
+      'min-inline-size': '2em',
+      'margin-inline-end': '0.4em',
+      'text-align': 'center'
     },
     'h1, h2, h3, h4, h5, h6, dt': {
       'color': headingColor + ' !important'
@@ -1039,6 +1094,7 @@ function appearance() {
   mode.onchange = () => {
     prefs.flow = mode.value;
     rendition?.flow(prefs.flow);
+    for (const contents of rendition?.getContents() || []) updateReadingGestures(contents);
     if (current?.cfi) rendition?.display(current.cfi);
     save();
   };
@@ -1671,10 +1727,11 @@ if (searchBookBtn) {
     input.enterKeyHint = 'search';
     input.style.width = '100%';
     const results = el('div', undefined, 'stack');
+    results.setAttribute('aria-live', 'polite');
     results.style.marginTop = '14px';
     const searchBook = book;
     if (!searchBook) return;
-    const form = el('form', undefined, 'stack');
+    const form = el('form', undefined, 'book-search-form');
     const submit = btn('Search', undefined, 'primary');
     submit.type = 'submit';
     let token = 0;

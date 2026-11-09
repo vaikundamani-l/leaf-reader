@@ -137,6 +137,74 @@ async function runLargeBookTest() {
     await new Promise(r => setTimeout(r, 500));
     console.log('✓ PASS: Next & Previous page turned smoothly in 24MB book');
 
+    await send('Emulation.setDeviceMetricsOverride', { width: 393, height: 850, deviceScaleFactor: 2, mobile: true });
+    await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
+    await evaluate('document.querySelector("#toc").click()');
+    const chapter = await evaluate(`
+      new Promise(resolve => {
+        const timer = setInterval(() => {
+          const item = [...document.querySelectorAll('.chapter-item')].find(row => row.textContent.includes('அர்ஜுனன் ஏன் வருந்துகிறான்?'));
+          if (item) { clearInterval(timer); item.click(); resolve(true); }
+        }, 50);
+        setTimeout(() => { clearInterval(timer); resolve(false); }, 3000);
+      })
+    `);
+    assert.ok(chapter, 'Chapter one should be available in the TOC');
+
+    async function waitFor(expression, message) {
+      for (let i = 0; i < 40; i++) {
+        if (await evaluate(expression)) return;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      assert.fail(message);
+    }
+    await waitFor(`(() => {
+      const doc = document.querySelector('#viewer iframe')?.contentDocument;
+      const index = doc?.querySelector('.verseindex');
+      return index && doc.defaultView.getComputedStyle(index).fontFamily.includes('TamilSans');
+    })()`, 'EPUB stylesheet should load in the frame');
+    assert.ok(await evaluate(`(() => {
+      const doc = document.querySelector('#viewer iframe').contentDocument;
+      const index = doc.querySelector('.verseindex');
+      const image = doc.querySelector('figure img');
+      return index.scrollWidth <= index.clientWidth && image.offsetWidth <= image.closest('figure').clientWidth;
+    })()`), 'Verse links and chapter illustration should fit the column');
+
+    async function swipe(fromX, fromY, toX, toY) {
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: fromX, y: fromY }] });
+      for (let step = 1; step <= 5; step++) {
+        const x = fromX + (toX - fromX) * step / 5;
+        const y = fromY + (toY - fromY) * step / 5;
+        await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+      }
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    }
+    const readerPosition = 'document.querySelector("#position").textContent';
+    await waitFor(readerPosition + '.includes("வருந்துகிறான்")', 'Reader should be on chapter one');
+    const start = await evaluate(readerPosition);
+    await swipe(300, 330, 90, 330);
+    await waitFor(readerPosition + ' !== ' + JSON.stringify(start), 'Horizontal swipe should advance in Pages mode');
+    const afterHorizontal = await evaluate(readerPosition);
+    await swipe(195, 570, 195, 340);
+    await waitFor(readerPosition + ' !== ' + JSON.stringify(afterHorizontal), 'Upward swipe should advance in Pages mode');
+
+    await evaluate(`
+      document.querySelector('#appearance').click();
+      const readingMode = [...document.querySelectorAll('#dialog select')].find(control => control.querySelector('option[value="scrolled-doc"]'));
+      readingMode.value = 'scrolled-doc';
+      readingMode.dispatchEvent(new Event('change'));
+      document.querySelector('#dismiss').click();
+    `);
+    await waitFor('document.querySelector("#viewer iframe")?.contentDocument?.body.style.touchAction.includes("pan-y")', 'Scroll mode should allow native vertical panning');
+    const chapterTitle = 'document.querySelector("#reader-title").textContent';
+    const beforeScroll = await evaluate(chapterTitle);
+    await swipe(195, 570, 195, 340);
+    await waitFor('document.querySelector("#viewer .epub-container")?.scrollTop > 0', 'Vertical swipe should scroll the chapter');
+    assert.equal(await evaluate(chapterTitle), beforeScroll, 'Vertical scrolling should stay in the same chapter');
+    await swipe(300, 330, 90, 330);
+    await waitFor(chapterTitle + ' !== ' + JSON.stringify(beforeScroll), 'Horizontal swipe should advance to the next section in Scroll mode');
+    console.log('✓ PASS: Tamil verse layout, page swipes, and continuous scroll gestures at mobile width');
+
     // Close reader
     await evaluate('document.getElementById("close-reader").click()');
     await new Promise(r => setTimeout(r, 500));
