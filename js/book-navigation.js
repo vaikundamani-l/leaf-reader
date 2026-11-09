@@ -25,7 +25,7 @@ export function resolveBookLink(value,section,book){
  return{kind:'internal',target:target.href+dest.hash,section:target,fragment:dest.hash.slice(1)};
 }
 
-export function installBookLinks(doc,section,book,rendition,{confirmExternal,openExternal,showError}){
+export function installBookLinks(doc,section,book,rendition,{confirmExternal,openExternal,showError,navigate=target=>rendition.display(target)}){
  const click=event=>{
   const anchor=event.target?.closest?.('a[href]');
   if(!anchor)return;
@@ -44,7 +44,7 @@ export function installBookLinks(doc,section,book,rendition,{confirmExternal,ope
     }
     if(!targetEl){showError('This link does not point to a page in this book.');return}
    }
-   Promise.resolve().then(()=>rendition.display(link.target)).catch(error=>showError(error.message||'Unable to open this book page.'));
+   Promise.resolve().then(()=>navigate(link.target)).catch(error=>showError(error.message||'Unable to open this book page.'));
   }else if(link.kind==='missing'){
    showError('This link does not point to a page in this book.');
   }else if(link.kind==='blocked'){

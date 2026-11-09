@@ -11,6 +11,7 @@ const el = (tag, text, cls) => {
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), v => v.toString(16).padStart(2, '0')).join('');
 
 let readerRequest = 0;
+let firstDisplay;
 let books = [], annotations = [], vocabulary = [], sessions = [];
 let current = null, book = null, rendition = null, selected = null;
 let view = 'library', query = '', sort = 'recent', list = false, filter = 'all';
@@ -77,13 +78,95 @@ function toast(t) {
   toast.t = setTimeout(() => elToast.classList.remove('show'), 3500);
 }
 
+const historyKey = 'leafReader';
+let dismissingDialog, shownDialogRoute;
+const currentRoute = () => history.state?.[historyKey];
+const shelfRoute = () => ({ view, depth: 0 });
+function writeRoute(route, replace = false) {
+  history[replace ? 'replaceState' : 'pushState']({ ...history.state, [historyKey]: route }, '');
+  $('#reader-back').hidden = route.depth < 2;
+}
+
+function showShelf(nextView) {
+  const fromDialog = Boolean(currentRoute()?.dialog);
+  if (view === nextView && !fromDialog) return;
+  view = nextView;
+  writeRoute(shelfRoute(), fromDialog);
+  $('#dialog')?.close();
+  render();
+}
+
+async function enterReader(entry, target = entry.cfi) {
+  const route = { view, bookId: entry.id, cfi: target, depth: 1 };
+  writeRoute(route, Boolean(currentRoute()?.dialog));
+  $('#dialog')?.close();
+  await openBook(entry, target);
+  if (!current && currentRoute()?.bookId === entry.id) history.back();
+}
+
+async function jumpReading(target) {
+  const route = currentRoute();
+  const reader = rendition;
+  if (!reader || !target || route?.bookId !== current?.id) return;
+  writeRoute({ view, bookId: current.id, cfi: target, depth: route.depth + 1 }, Boolean(route.dialog));
+  $('#dialog')?.close();
+  await reader.display(target);
+}
+
+async function restoreRoute(route) {
+  if (!route) route = { view: 'library', depth: 0 };
+  $('#dialog')?.close();
+  if (route.dialog) {
+    // Forward navigation restores the reading or shelf location beneath a dismissed dialog.
+    route = { ...route, dialog: false };
+    writeRoute(route, true);
+  }
+  $('#reader-back').hidden = route.depth < 2;
+  view = route.view;
+  const entry = route.bookId && books.find(book => book.id === route.bookId);
+  if (!entry) {
+    if (current) closeReader();
+    else render();
+    if (route.bookId) writeRoute(shelfRoute(), true);
+  } else if (current?.id !== entry.id) {
+    await openBook(entry, route.cfi);
+  } else if (route.cfi && current.cfi !== route.cfi) {
+    await rendition?.display(route.cfi);
+  }
+}
+
+window.addEventListener('popstate', safe(event => {
+  const route = event.state?.[historyKey];
+  const closing = dismissingDialog || ($('#dialog').open && shownDialogRoute);
+  dismissingDialog = null;
+  if (closing && route && !route.dialog && closing.view === route.view &&
+      closing.bookId === route.bookId && closing.depth === route.depth) {
+    $('#dialog').close();
+    if (current?.id === route.bookId && current?.cfi) writeRoute({ ...route, cfi: current.cfi }, true);
+    return;
+  }
+  return restoreRoute(route);
+}));
+$('#dialog').addEventListener('close', () => {
+  if (!$('#dialog').open && currentRoute()?.dialog && !dismissingDialog) {
+    dismissingDialog = currentRoute();
+    history.back();
+  }
+});
+$('#reader-back').onclick = () => history.back();
+
 function dialog(title) {
   const titleEl = $('#dialog-title');
   const bodyEl = $('#dialog-body');
   if (titleEl) titleEl.textContent = title;
   if (bodyEl) bodyEl.replaceChildren();
   const d = $('#dialog');
-  if (d && !d.open) d.showModal();
+  if (d && !d.open) {
+    const route = currentRoute() || shelfRoute();
+    if (!route.dialog) writeRoute({ ...route, dialog: true });
+    shownDialogRoute = currentRoute();
+    d.showModal();
+  }
   sizeMobileDialog();
   return bodyEl;
 }
@@ -199,7 +282,7 @@ function renderLibrary(c) {
     info.append(
       bar,
       el('p', last.opened ? `${Math.round(last.progress || 0)}% read · Your place is saved` : 'Open a sample, or import a book of your own'),
-      btn(last.opened ? 'Continue reading  →' : 'Start reading  →', () => openBook(last), 'primary')
+      btn(last.opened ? 'Continue reading  →' : 'Start reading  →', () => enterReader(last), 'primary')
     );
     hero.append(cover(last), info, el('div', '❧', 'hero-art'));
     c.append(hero);
@@ -283,7 +366,7 @@ function drawGrid() {
 
   for (const b of shown) {
     const card = el('article', undefined, 'book');
-    const open = btn('', () => openBook(b), 'book-open');
+    const open = btn('', () => enterReader(b), 'book-open');
     const details = el('div');
     details.append(el('h3', b.title || 'Untitled Book'), el('p', b.author || 'Unknown Author'));
     open.append(cover(b), details);
@@ -448,7 +531,11 @@ document.addEventListener('drop', e => {
   if (e.dataTransfer?.files?.length) importFiles(e.dataTransfer.files);
 });
 
-document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { view = b.dataset.view; render(); });
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => showShelf(b.dataset.view));
+$('.brand').onclick = event => {
+  event.preventDefault();
+  showShelf('library');
+};
 
 const mobileMoreBtn = $('#mobile-more');
 if (mobileMoreBtn) {
@@ -456,7 +543,7 @@ if (mobileMoreBtn) {
     const d = dialog('More in Leaf Reader');
     d.className = 'stack';
     for (const [v, t] of [['favorites', 'Favorites'], ['completed', 'Completed'], ['vocabulary', 'Vocabulary'], ['statistics', 'Reading insights'], ['settings', 'Settings & backup']]) {
-      d.append(btn(t, () => { view = v; render(); $('#dialog')?.close(); }));
+      d.append(btn(t, () => showShelf(v)));
     }
   };
 }
@@ -647,8 +734,7 @@ function jumpPageDialog() {
       : total ? jumpBook.locations.cfiFromLocation(destination - 1)
         : jumpBook.spine.get(destination - 1)?.href;
     if (!target) throw Error('This reading position is unavailable.');
-    await jumpRendition.display(target);
-    if (book === jumpBook && form.isConnected) $('#dialog')?.close();
+    await jumpReading(target);
   }
 
   form.onsubmit = safe(async e => {
@@ -674,7 +760,23 @@ function jumpPageDialog() {
   input.select();
 }
 
-async function openBook(b) {
+function disposeReader() {
+  const oldRendition = rendition;
+  const oldBook = book;
+  const pending = firstDisplay;
+  rendition = null;
+  book = null;
+  firstDisplay = null;
+  $('#viewer').replaceChildren();
+  const dispose = () => {
+    try { oldRendition?.destroy(); } catch {}
+    try { oldBook?.destroy(); } catch {}
+  };
+  if (pending) pending.then(dispose, dispose);
+  else dispose();
+}
+
+async function openBook(b, startAt = b.cfi) {
   const request = ++readerRequest;
   let openedBook;
   const active = () => request === readerRequest;
@@ -691,11 +793,7 @@ async function openBook(b) {
       const lt = $('#reader-loading-text');
       if (lt) lt.textContent = 'Opening ' + (b.title || 'book') + '…';
     }
-    try { rendition?.destroy(); } catch {}
-    rendition = null;
-    try { book?.destroy(); } catch {}
-    book = null;
-    $('#viewer').replaceChildren();
+    disposeReader();
 
     const data = b.demo ? await (await fetch('library/' + b.path)).arrayBuffer() : await get(b.id);
     if (!active()) return;
@@ -724,7 +822,9 @@ async function openBook(b) {
       doc.head?.prepend(policy);
     });
 
-    rendition = openedBook.renderTo('viewer', {
+    const mount = el('div', undefined, 'reader-mount');
+    $('#viewer').append(mount);
+    rendition = openedBook.renderTo(mount, {
       width: '100%',
       height: '100%',
       flow: prefs.flow,
@@ -740,7 +840,8 @@ async function openBook(b) {
         installBookLinks(doc, section, openedBook, rendition, {
           confirmExternal: msg => confirm(msg || 'Open this external website?'),
           openExternal: href => window.open(href, '_blank', 'noopener,noreferrer'),
-          showError: msg => toast(msg)
+          showError: msg => toast(msg),
+          navigate: jumpReading
         });
       }
 
@@ -799,6 +900,8 @@ async function openBook(b) {
     rendition.on('relocated', loc => {
       if (!active()) return;
       b.cfi = loc.start.cfi;
+      const route = currentRoute();
+      if (route?.bookId === b.id && !route.dialog && route.cfi !== b.cfi) writeRoute({ ...route, cfi: b.cfi }, true);
       selected = null;
       $('#selection').hidden = true;
       b.opened = Date.now();
@@ -833,8 +936,10 @@ async function openBook(b) {
       b.locations = null;
     }
 
-    await rendition.display(b.cfi || undefined);
-    if (!active()) { openedBook.destroy(); return; }
+    firstDisplay = rendition.display(startAt || undefined);
+    await firstDisplay;
+    if (!active()) return;
+    firstDisplay = null;
 
     if (loader) loader.hidden = true;
 
@@ -889,16 +994,17 @@ function closeReader() {
   if (loader) loader.hidden = true;
   stopTTS();
   window.speechSynthesis?.cancel();
-  try { rendition?.destroy(); } catch {}
-  rendition = null;
-  try { book?.destroy(); } catch {}
-  book = null;
+  disposeReader();
   current = null;
   render();
 }
 
 const closeReaderBtn = $('#close-reader');
-if (closeReaderBtn) closeReaderBtn.onclick = closeReader;
+if (closeReaderBtn) closeReaderBtn.onclick = () => {
+  const depth = currentRoute()?.depth;
+  if (depth) history.go(-depth);
+  else closeReader();
+};
 const prevBtn = $('#previous');
 if (prevBtn) prevBtn.onclick = () => { activity = Date.now(); rendition?.prev(); };
 const nextBtn = $('#next');
@@ -1162,10 +1268,7 @@ if (tocBtn) {
       main.append(el('span', item.label, 'chapter-label'), badge);
       const pages = el('span', undefined, 'chapter-pages');
       itemBtn.append(main, pages);
-      itemBtn.onclick = () => {
-        rendition?.display(item.href);
-        $('#dialog')?.close();
-      };
+      itemBtn.onclick = safe(() => jumpReading(item.href));
       listContainer.append(itemBtn);
       return { itemBtn, badge, pages };
     });
@@ -1193,10 +1296,7 @@ if (tocBtn) {
     if (!bms.length) {
       d.append(el('p', 'No bookmarks saved yet. Use the ♧ button while reading.', 'muted'));
     } else {
-      bms.forEach(a => d.append(btn(a.text, () => {
-        rendition?.display(a.cfi);
-        $('#dialog')?.close();
-      })));
+      bms.forEach(a => d.append(btn(a.text, safe(() => jumpReading(a.cfi)))));
     }
     setTimeout(() => {
       const activeEl = listContainer.querySelector('.chapter-item.active');
@@ -1773,10 +1873,7 @@ if (searchBookBtn) {
       }
       if (!active()) return;
       results.replaceChildren(el('p', matches.length + ' matches' + (matches.length >= 300 ? ' (first 300 shown)' : '')));
-      matches.slice(0, 300).forEach(m => results.append(btn(m.excerpt, () => {
-        rendition?.display(m.cfi);
-        $('#dialog')?.close();
-      })));
+      matches.slice(0, 300).forEach(m => results.append(btn(m.excerpt, safe(() => jumpReading(m.cfi)))));
     });
     form.append(input, submit);
     d.append(form, results);
@@ -1834,10 +1931,7 @@ function savedPage(c) {
       card.append(
         btn('Go to passage', async () => {
           const b = books.find(b => b.id === a.bookId);
-          if (b) {
-            await openBook(b);
-            rendition?.display(a.cfi);
-          }
+          if (b) await enterReader(b, a.cfi);
         }),
         btn('Edit note', () => {
           promptDialog('Edit note', 'Note:', a.note || '', note => {
@@ -2222,7 +2316,12 @@ try {
     await save();
   }
   applyAppearance();
-  render();
+  const route = currentRoute();
+  if (route) await restoreRoute(route);
+  else {
+    writeRoute(shelfRoute(), true);
+    render();
+  }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => toast('Offline setup failed. Reading is still available online.'));
   }

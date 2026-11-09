@@ -192,6 +192,7 @@ async function runLargeBookTest() {
           document.querySelector('#dismiss').click();
         })()`);
         await waitFor(`(() => {
+          if (history.state.leafReader.dialog) return false;
           const doc = document.querySelector('#viewer iframe')?.contentDocument;
           if (!doc?.body) return false;
           const style = element => doc.defaultView.getComputedStyle(element);
@@ -252,6 +253,14 @@ async function runLargeBookTest() {
     await swipe(195, 570, 195, 340);
     await waitFor('document.querySelector("#viewer .epub-container")?.scrollTop > 0', 'Vertical swipe should scroll the chapter');
     assert.equal(await evaluate(chapterTitle), beforeScroll, 'Vertical scrolling should stay in the same chapter');
+    // Allow native touch-scroll momentum to finish before starting a new gesture.
+    await evaluate(`new Promise(resolve => {
+      const scroller = document.querySelector('#viewer .epub-container');
+      let timer = setTimeout(done, 160);
+      function done() { scroller.removeEventListener('scroll', moving); resolve(true); }
+      function moving() { clearTimeout(timer); timer = setTimeout(done, 160); }
+      scroller.addEventListener('scroll', moving);
+    })`);
     await swipe(300, 330, 90, 330);
     await waitFor(chapterTitle + ' !== ' + JSON.stringify(beforeScroll), 'Horizontal swipe should advance to the next section in Scroll mode');
     await checkThemes(['.wordhelp p']);

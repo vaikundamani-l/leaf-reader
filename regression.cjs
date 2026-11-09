@@ -12,9 +12,9 @@ async function main(){
  vm.runInContext(helper+"restorePreferences(prefs,{font:'evil',customBg:'url(x)',size:NaN});",context);
  assert.equal(context.prefs.font,'Arial');assert.equal(context.prefs.customBg,'#123456');assert.equal(context.prefs.size,32);
  console.log('PASS backup ID remapping, preference round-trip, invalid preference rejection');
- const open=source.slice(source.indexOf('async function openBook(b)'),source.indexOf('\nfunction closeReader()'));
+ const open=source.slice(source.indexOf('function disposeReader()'),source.indexOf('\nfunction closeReader()'));
  let release,epubCalls=0;
- const nodes={};const state={readerRequest:0,book:null,current:null,selected:null,document:{body:{style:{}}},$:key=>nodes[key]||(nodes[key]={replaceChildren(){}}),fetch:()=>new Promise(resolve=>release=resolve),ePub:()=>{epubCalls++;throw Error('must not render cancelled request')},toast:()=>{},closeReader:()=>{state.readerRequest++;state.book=null;state.current=null}};
+ const nodes={};const state={firstDisplay:null,rendition:null,readerRequest:0,book:null,current:null,selected:null,document:{body:{style:{}}},$:key=>nodes[key]||(nodes[key]={replaceChildren(){}}),fetch:()=>new Promise(resolve=>release=resolve),ePub:()=>{epubCalls++;throw Error('must not render cancelled request')},toast:()=>{},closeReader:()=>{state.readerRequest++;state.book=null;state.current=null}};
  vm.createContext(state);vm.runInContext(open,state);
  const opening=state.openBook({demo:true,path:'test.epub',title:'Test'});
  state.closeReader();release({arrayBuffer:async()=>new ArrayBuffer(1)});await opening;assert.equal(epubCalls,0);

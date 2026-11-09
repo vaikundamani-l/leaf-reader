@@ -299,6 +299,8 @@ async function runAffectedEpubIntegration() {
     console.log(`Internal links detected in document: ${linkAudit.internalCount}`);
     assert.ok(linkAudit.internalCount >= 1000, `Expected >1000 internal links, found ${linkAudit.internalCount}`);
 
+    const beforeLink = await evaluate('document.querySelector("#position").textContent');
+    const beforeLinkDepth = await evaluate('history.state.leafReader.depth');
     // Click an internal fragment link (e.g. back to contents or index)
     await evaluate(`
       (() => {
@@ -311,6 +313,20 @@ async function runAffectedEpubIntegration() {
     await new Promise(r => setTimeout(r, 1500));
     assert.equal(externalPrompts, 0, 'Internal links must never trigger external website confirmation');
     assert.equal(newWindowsOpened, 0, 'Internal links must not open new windows or tabs');
+    assert.equal(await evaluate('history.state.leafReader.depth'), beforeLinkDepth + 1, 'EPUB link should create a history entry');
+    const linkDestination = await evaluate('document.querySelector("#position").textContent');
+    assert.notEqual(linkDestination, beforeLink, 'EPUB link should move to a different reading location');
+    async function waitForPosition(position) {
+      for (let i = 0; i < 40; i++) {
+        if (await evaluate('document.querySelector("#position").textContent') === position) return;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      assert.fail('Reading history did not restore: ' + position);
+    }
+    await evaluate('history.back()');
+    await waitForPosition(beforeLink);
+    await evaluate('history.forward()');
+    await waitForPosition(linkDestination);
     console.log('✓ PASS: Internal link navigation stayed inside reader frame without external prompt or new tab');
 
     console.log('7. Verifying theme contrast and dark mode...');
