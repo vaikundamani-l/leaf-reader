@@ -349,6 +349,40 @@ async function runE2ETests() {
     await expectEventually('!document.querySelector("#dialog").open', 'Save note should submit the form');
     console.log('✓ PASS: Mobile percentage jump, keyboard search, selection toolbar, and note color');
 
+    const route = 'history.state.leafReader';
+    await expectEventually(`!${route}.dialog`, 'Saving a note should clear the dialog history entry');
+    await evaluate('document.querySelector("#appearance").click(); history.back()');
+    await expectEventually(`!document.querySelector("#dialog").open && !${route}.dialog && ${route}.bookId`, 'Browser Back should dismiss the dialog and keep the book open');
+
+    await evaluate('document.querySelector("#toc").click()');
+    await expectEventually('document.querySelectorAll(".toc-list .chapter-item").length >= 2', 'TOC should render chapters');
+    const originalCfi = await evaluate(`${route}.cfi`);
+    const originalChapter = await evaluate('document.querySelector("#reader-title").textContent');
+    await evaluate('document.querySelector(".toc-list .chapter-item:not(.active)").click()');
+    const atDestination = `document.querySelector("#reader-title").textContent !== ${JSON.stringify(originalChapter)} && ${route}.cfi.startsWith("epubcfi(")`;
+    await expectEventually(atDestination, 'TOC jump should navigate to a different chapter');
+    await evaluate('document.querySelector("#reader-back").click()');
+    const atOrigin = `${route}.cfi === ${JSON.stringify(originalCfi)} && document.querySelector("#reader-title").textContent === ${JSON.stringify(originalChapter)}`;
+    await expectEventually(atOrigin, 'Reader Back should restore the chapter and reading location before the jump');
+    await evaluate('history.forward()');
+    await expectEventually(atDestination, 'Browser Forward should restore the jump destination');
+
+    await evaluate('document.querySelector("#close-reader").click()');
+    await expectEventually('document.querySelector("#reader").hidden', 'Library should leave the reader in one tap after multiple jumps');
+    await evaluate('document.querySelector("[data-view=reading]").click()');
+    await expectEventually(`${route}.view === 'reading'`, 'Shelf tab should enter browser history');
+    await evaluate('history.back()');
+    await expectEventually(`${route}.view === 'library' && document.querySelector("nav [data-view=library]").classList.contains("active")`, 'Browser Back should restore the previous shelf');
+
+    await evaluate(`[...document.querySelectorAll('#books .book-open')].find(button => button.textContent.includes('Slowing Down')).click()`);
+    await expectEventually('!document.querySelector("#reader").hidden', 'Book should open from the library');
+    await evaluate('history.back()');
+    await expectEventually('document.querySelector("#reader").hidden', 'Browser Back should close the reader from its first location');
+    await evaluate('history.forward()');
+    await expectEventually('!document.querySelector("#reader").hidden && document.querySelector("#reader-loading").hidden', 'Browser Forward should reopen the book');
+    assert.deepEqual(consoleErrors, [], 'Back during opening must not cause reader errors');
+    console.log('✓ PASS: Browser Back and Forward across dialogs, TOC jumps, reader, and shelves');
+
     // Check for JavaScript console errors
     console.log('\n--- JAVASCRIPT CONSOLE AUDIT ---');
     if (consoleErrors.length > 0) {
