@@ -996,7 +996,7 @@ function applyAppearance() {
     'a': {
       'color': linkColor + ' !important'
     },
-    '.card, .template, blockquote, pre': {
+    '.card, .template, .intro-child, .simple-intro, .wordhelp, blockquote, pre': {
       'background': cardBg + ' !important',
       'color': fg + ' !important',
       'border-color': cardBorder + ' !important'
@@ -1006,7 +1006,7 @@ function applyAppearance() {
       'color': fg + ' !important',
       'border-left-color': noticeBorder + ' !important'
     },
-    '.meta, small, .pending, .eyebrow': {
+    '.meta, small, .pending, .eyebrow, figcaption': {
       'color': (dark ? '#a9b7a8' : (prefs.theme === 'sepia' ? '#705943' : '#556557')) + ' !important'
     },
     'table, th, td': {

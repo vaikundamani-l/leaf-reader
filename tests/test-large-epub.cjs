@@ -170,6 +170,25 @@ async function runLargeBookTest() {
       return index.scrollWidth <= index.clientWidth && image.offsetWidth <= image.closest('figure').clientWidth;
     })()`), 'Verse links and chapter illustration should fit the column');
 
+    await evaluate(`
+      document.querySelector('#appearance').click();
+      [...document.querySelectorAll('#dialog .swatches button')].find(button => button.textContent === 'oled').click();
+      document.querySelector('#dismiss').click();
+    `);
+    await waitFor(`(() => {
+      const doc = document.querySelector('#viewer iframe')?.contentDocument;
+      const intro = doc?.querySelector('.intro-child');
+      if (!intro) return false;
+      const style = element => doc.defaultView.getComputedStyle(element);
+      return style(intro).backgroundColor === 'rgb(20, 20, 20)' &&
+        style(intro.querySelector('h2')).color === 'rgb(255, 255, 255)' &&
+        style(doc.querySelector('figcaption')).color === 'rgb(169, 183, 168)';
+    })()`, 'OLED theme should pair light chapter text with dark panels and readable captions');
+    assert.ok(await evaluate(`(() => {
+      const footer = document.querySelector('.reader-bottom').getBoundingClientRect();
+      return Boolean(document.elementFromPoint(footer.left + 30, footer.top + 20)?.closest('.reader-bottom'));
+    })()`), 'Reader controls should be above the library navigation');
+
     async function swipe(fromX, fromY, toX, toY) {
       await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: fromX, y: fromY }] });
       for (let step = 1; step <= 5; step++) {
