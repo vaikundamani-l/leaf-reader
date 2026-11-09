@@ -931,23 +931,40 @@ function updateReadingGestures(contents) {
   contents.document.body.style.touchAction = action;
 }
 
+function colorLuminance(hex) {
+  const channels = hex.slice(1).match(/../g).map(channel => {
+    const value = parseInt(channel, 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
 function applyAppearance() {
-  const [bg, fg] = (prefs.theme === 'custom' ? [prefs.customBg || '#f7f8f4', prefs.customFg || '#263d31'] : palettes[prefs.theme]) || palettes.paper;
+  const custom = prefs.theme === 'custom';
+  const [bg, preferredFg] = (custom ? [prefs.customBg || '#f7f8f4', prefs.customFg || '#263d31'] : palettes[prefs.theme]) || palettes.paper;
+  let fg = preferredFg;
+  if (custom) {
+    const background = colorLuminance(bg);
+    const foreground = colorLuminance(fg);
+    const contrast = (Math.max(background, foreground) + 0.05) / (Math.min(background, foreground) + 0.05);
+    if (contrast < 4.5) fg = background >= 0.179 ? '#000000' : '#ffffff';
+  }
+  const dark = ['dark', 'oled'].includes(prefs.theme);
+  const muted = custom ? fg : dark ? '#a9b7a8' : prefs.theme === 'sepia' ? '#705943' : '#556557';
   document.documentElement.style.setProperty('--bg', bg);
   document.documentElement.style.setProperty('--text', fg);
   document.documentElement.style.setProperty('--panel', bg);
-  const dark = ['dark', 'oled'].includes(prefs.theme);
   document.documentElement.style.setProperty('--line', dark ? '#3a443c' : '#e5e8df');
-  document.documentElement.style.setProperty('--muted', dark ? '#a9b7a8' : '#536154');
+  document.documentElement.style.setProperty('--muted', muted);
   document.documentElement.style.setProperty('--soft', dark ? '#344136' : '#eaf0e6');
   document.body.classList.toggle('dark', dark);
   const viewer = $('#viewer');
   if (viewer) viewer.style.maxWidth = prefs.width + 'px';
-  const headingColor = dark ? (prefs.theme === 'oled' ? '#ffffff' : '#f0f5ee') : (prefs.theme === 'sepia' ? '#332314' : (prefs.theme === 'light' ? '#173e4d' : '#234433'));
-  const linkColor = dark ? '#8dc58b' : (prefs.theme === 'sepia' ? '#8a5c2d' : '#2c6d48');
-  const cardBg = dark ? (prefs.theme === 'oled' ? '#141414' : '#27312a') : (prefs.theme === 'sepia' ? '#ede2cb' : (prefs.theme === 'light' ? '#f4f7f8' : '#eef3eb'));
+  const headingColor = custom ? fg : dark ? (prefs.theme === 'oled' ? '#ffffff' : '#f0f5ee') : (prefs.theme === 'sepia' ? '#332314' : (prefs.theme === 'light' ? '#173e4d' : '#234433'));
+  const linkColor = custom ? fg : dark ? '#8dc58b' : (prefs.theme === 'sepia' ? '#8a5c2d' : '#2c6d48');
+  const cardBg = custom ? bg : dark ? (prefs.theme === 'oled' ? '#141414' : '#27312a') : (prefs.theme === 'sepia' ? '#ede2cb' : (prefs.theme === 'light' ? '#f4f7f8' : '#eef3eb'));
   const cardBorder = dark ? (prefs.theme === 'oled' ? '#333333' : '#3f4e43') : (prefs.theme === 'sepia' ? '#d8c7ad' : '#cdd8da');
-  const noticeBg = dark ? (prefs.theme === 'oled' ? '#231e13' : '#2c271b') : (prefs.theme === 'sepia' ? '#faedd3' : '#fff6db');
+  const noticeBg = custom ? bg : dark ? (prefs.theme === 'oled' ? '#231e13' : '#2c271b') : (prefs.theme === 'sepia' ? '#faedd3' : '#fff6db');
   const noticeBorder = '#d49b29';
 
   rendition?.themes.default({
@@ -994,9 +1011,10 @@ function applyAppearance() {
       'color': fg + ' !important'
     },
     'a': {
-      'color': linkColor + ' !important'
+      'color': linkColor + ' !important',
+      'text-decoration': 'underline !important'
     },
-    '.card, .template, .intro-child, .simple-intro, .wordhelp, blockquote, pre': {
+    '.card, .template, .intro-child, .simple-intro, .wordhelp, .covertext, blockquote, pre': {
       'background': cardBg + ' !important',
       'color': fg + ' !important',
       'border-color': cardBorder + ' !important'
@@ -1006,8 +1024,8 @@ function applyAppearance() {
       'color': fg + ' !important',
       'border-left-color': noticeBorder + ' !important'
     },
-    '.meta, small, .pending, .eyebrow, figcaption': {
-      'color': (dark ? '#a9b7a8' : (prefs.theme === 'sepia' ? '#705943' : '#556557')) + ' !important'
+    '.meta, small, .pending, .eyebrow, figcaption, .num, .counts, .summary, .old-title, .end': {
+      'color': muted + ' !important'
     },
     'table, th, td': {
       'color': fg + ' !important',
@@ -1083,6 +1101,7 @@ function appearance() {
     };
     field(d, label, input);
   }
+  d.append(el('p', 'Custom text uses black or white when the selected colors have low contrast.', 'muted'));
 
   const mode = el('select');
   for (const [v, t] of [['paginated', 'Pages'], ['scrolled-doc', 'Continuous scroll']]) {

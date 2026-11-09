@@ -170,20 +170,52 @@ async function runLargeBookTest() {
       return index.scrollWidth <= index.clientWidth && image.offsetWidth <= image.closest('figure').clientWidth;
     })()`), 'Verse links and chapter illustration should fit the column');
 
-    await evaluate(`
-      document.querySelector('#appearance').click();
-      [...document.querySelectorAll('#dialog .swatches button')].find(button => button.textContent === 'oled').click();
-      document.querySelector('#dismiss').click();
-    `);
-    await waitFor(`(() => {
-      const doc = document.querySelector('#viewer iframe')?.contentDocument;
-      const intro = doc?.querySelector('.intro-child');
-      if (!intro) return false;
-      const style = element => doc.defaultView.getComputedStyle(element);
-      return style(intro).backgroundColor === 'rgb(20, 20, 20)' &&
-        style(intro.querySelector('h2')).color === 'rgb(255, 255, 255)' &&
-        style(doc.querySelector('figcaption')).color === 'rgb(169, 183, 168)';
-    })()`, 'OLED theme should pair light chapter text with dark panels and readable captions');
+    async function checkThemes(selectors) {
+      const themes = [
+        ['paper', 'rgb(247, 248, 244)'], ['light', 'rgb(255, 255, 255)'], ['sepia', 'rgb(244, 234, 213)'],
+        ['dark', 'rgb(32, 38, 34)'], ['oled', 'rgb(0, 0, 0)'],
+        ['custom', 'rgb(16, 16, 16)', ['#101010', '#eeeeee']],
+        ['custom', 'rgb(250, 250, 250)', ['#fafafa', '#fafafa']]
+      ];
+      for (const [theme, pageColor, custom] of themes) {
+        await evaluate(`(() => {
+          document.querySelector('#appearance').click();
+          if (${JSON.stringify(custom || null)}) {
+            const colors = document.querySelectorAll('#dialog input[type=color]');
+            ${JSON.stringify(custom || [])}.forEach((color, index) => {
+              colors[index].value = color;
+              colors[index].dispatchEvent(new Event('input'));
+            });
+          } else {
+            [...document.querySelectorAll('#dialog .swatches button')].find(button => button.textContent === ${JSON.stringify(theme)}).click();
+          }
+          document.querySelector('#dismiss').click();
+        })()`);
+        await waitFor(`(() => {
+          const doc = document.querySelector('#viewer iframe')?.contentDocument;
+          if (!doc?.body) return false;
+          const style = element => doc.defaultView.getComputedStyle(element);
+          if (style(doc.body).backgroundColor !== ${JSON.stringify(pageColor)}) return false;
+          function luminance(rgb) {
+            const [r, g, b] = rgb.match(/\\d+/g).slice(0, 3).map(n => {
+              const value = Number(n) / 255;
+              return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+            });
+            return r * 0.2126 + g * 0.7152 + b * 0.0722;
+          }
+          return ${JSON.stringify(selectors)}.every(selector => {
+            const text = doc.querySelector(selector);
+            if (!text) return false;
+            let panel = text;
+            while (panel && style(panel).backgroundColor === 'rgba(0, 0, 0, 0)') panel = panel.parentElement;
+            if (!panel) return false;
+            const colors = [style(text).color, style(panel).backgroundColor].map(luminance);
+            return (Math.max(...colors) + 0.05) / (Math.min(...colors) + 0.05) >= 4.5;
+          });
+        })()`, `Reader text should have sufficient contrast in ${theme} mode (${pageColor})`);
+      }
+    }
+    await checkThemes(['.intro-child h2', '.intro-child p', 'figcaption', '.verseindex a', '.speaker']);
     assert.ok(await evaluate(`(() => {
       const footer = document.querySelector('.reader-bottom').getBoundingClientRect();
       return Boolean(document.elementFromPoint(footer.left + 30, footer.top + 20)?.closest('.reader-bottom'));
@@ -222,7 +254,8 @@ async function runLargeBookTest() {
     assert.equal(await evaluate(chapterTitle), beforeScroll, 'Vertical scrolling should stay in the same chapter');
     await swipe(300, 330, 90, 330);
     await waitFor(chapterTitle + ' !== ' + JSON.stringify(beforeScroll), 'Horizontal swipe should advance to the next section in Scroll mode');
-    console.log('✓ PASS: Tamil verse layout, page swipes, and continuous scroll gestures at mobile width');
+    await checkThemes(['.wordhelp p']);
+    console.log('✓ PASS: Tamil EPUB layout, touch gestures, and contrast in all reader themes at mobile width');
 
     // Close reader
     await evaluate('document.getElementById("close-reader").click()');
