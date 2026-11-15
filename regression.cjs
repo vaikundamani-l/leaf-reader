@@ -29,6 +29,10 @@ async function main(){
  vm.createContext(sw);vm.runInContext(fs.readFileSync(__dirname+'/sw.js','utf8'),sw);
  async function request(){let result;events.fetch({request:{url:'https://example.com/app',method:'GET'},respondWith(value){result=value}});return result}
  cache.set('https://example.com/app','old');assert.equal((await request()).value,'new');online=false;assert.equal(await request(),'new');
- console.log('PASS online cache refresh and offline fallback');
+ // A quota failure during cache.put must not prevent a successful online book request.
+ online=true;
+ sw.caches.open=async()=>({match:async request=>cache.get(request.url),put:async()=>{throw Error('QuotaExceededError')}});
+ assert.equal((await request()).value,'new');
+ console.log('PASS online cache refresh, offline fallback, and cache quota resilience');
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

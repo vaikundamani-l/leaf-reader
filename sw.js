@@ -51,7 +51,10 @@ self.addEventListener('fetch', event => {
     try {
       const response = await fetch(request, { cache: 'no-cache' });
       if (response.ok && response.status !== 206) {
-        await cache.put(request, response.clone());
+        // A full or unavailable Cache Storage must never turn a successful network response into a failed read.
+        try { await cache.put(request, response.clone()); } catch (error) {
+          console.warn('Leaf Reader: response was delivered but could not be cached', error);
+        }
       }
       return response;
     } catch (error) {
