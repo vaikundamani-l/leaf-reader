@@ -1,0 +1,21 @@
+name: Leaf Reader Quality Checks
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify browser availability
+        run: |
+          command -v google-chrome || command -v chromium
+      - name: Run all regression and browser suites
+        run: npm test
