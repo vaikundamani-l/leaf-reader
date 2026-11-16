@@ -1,0 +1,22 @@
+name: Leaf Reader Full Regression
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Chrome is installed
+        run: |
+          command -v google-chrome
+          google-chrome --version
+      - name: Run complete regression suite
+        run: npm test
