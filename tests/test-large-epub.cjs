@@ -37,8 +37,12 @@ async function runLargeBookTest() {
   const tmpDir = path.join('/tmp', 'leaf-large-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const chromeProc = spawn('google-chrome', [
+  const chromeBin = process.env.CHROME_BIN || 'google-chrome';
+  const chromeProc = spawn(chromeBin, [
     '--headless=new',
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
     `--remote-debugging-port=${CHROME_PORT}`,
     `--user-data-dir=${tmpDir}`,
     '--no-first-run',
