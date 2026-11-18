@@ -47,10 +47,13 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || reqUrl.origin !== self.location.origin) return;
 
   event.respondWith((async () => {
-    const cache = await caches.open(CACHE);
+    let cache = null;
+    try { cache = await caches.open(CACHE); } catch (error) {
+      console.warn('Leaf Reader: Cache Storage unavailable; continuing online', error);
+    }
     try {
       const response = await fetch(request, { cache: 'no-cache' });
-      if (response.ok && response.status !== 206) {
+      if (cache && response.ok && response.status !== 206) {
         // A full or unavailable Cache Storage must never turn a successful network response into a failed read.
         try { await cache.put(request, response.clone()); } catch (error) {
           console.warn('Leaf Reader: response was delivered but could not be cached', error);
@@ -58,10 +61,10 @@ self.addEventListener('fetch', event => {
       }
       return response;
     } catch (error) {
-      const cached = await cache.match(request);
+      const cached = cache ? await cache.match(request) : null;
       if (cached) return cached;
       if (request.mode === 'navigate' || request.destination === 'document') {
-        const fallback = await cache.match('./') || await cache.match('index.html');
+        const fallback = cache ? (await cache.match('./') || await cache.match('index.html')) : null;
         if (fallback) return fallback;
       }
       throw error;
