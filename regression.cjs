@@ -33,6 +33,11 @@ async function main(){
  online=true;
  sw.caches.open=async()=>({match:async request=>cache.get(request.url),put:async()=>{throw Error('QuotaExceededError')}});
  assert.equal((await request()).value,'new');
- console.log('PASS online cache refresh, offline fallback, and cache quota resilience');
+ // Cache Storage may be disabled by browser privacy settings or fail to open.
+ sw.caches.open=async()=>{throw Error('Cache Storage unavailable')};
+ assert.equal((await request()).value,'new', 'Network responses should work without Cache Storage');
+ online=false;
+ await assert.rejects(request(), /offline/, 'Offline requests without Cache Storage must reject');
+ console.log('PASS online cache refresh, offline fallback, cache quota and unavailable storage resilience');
 }
 main().catch(error=>{console.error(error);process.exitCode=1});
