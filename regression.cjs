@@ -38,6 +38,12 @@ async function main(){
  assert.equal((await request()).value,'new', 'Network responses should work without Cache Storage');
  online=false;
  await assert.rejects(request(), /offline/, 'Offline requests without Cache Storage must reject');
- console.log('PASS online cache refresh, offline fallback, cache quota and unavailable storage resilience');
+ // Service workers must not intercept non-GET or cross-origin requests.
+ let intercepted=false;
+ events.fetch({request:{url:'https://example.com/app',method:'POST'},respondWith(){intercepted=true}});
+ assert.equal(intercepted,false,'POST requests must not be intercepted');
+ events.fetch({request:{url:'https://other.example.com/app',method:'GET'},respondWith(){intercepted=true}});
+ assert.equal(intercepted,false,'Cross-origin requests must not be intercepted');
+ console.log('PASS online cache refresh, offline fallback, cache quota, unavailable storage and request-scope isolation');
 }
 main().catch(error=>{console.error(error);process.exitCode=1});
