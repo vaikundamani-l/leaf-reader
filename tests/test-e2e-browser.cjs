@@ -57,9 +57,14 @@ async function runE2ETests() {
     'about:blank'
   ]);
 
+  // CI runners can take considerably longer than four seconds to start Chrome.
+  // Keep a bounded diagnostic log so startup failures are actionable.
+  let chromeErrors = '';
+  chromeProc.stderr?.on('data', chunk => { chromeErrors = (chromeErrors + chunk.toString()).slice(-4000); });
   // Wait for Chrome debugging port to open
   let wsUrl = null;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 300; i++) {
+    if (chromeProc.exitCode !== null) break;
     await new Promise(r => setTimeout(r, 100));
     try {
       const res = await fetch(`http://127.0.0.1:${CHROME_PORT}/json/list`);
@@ -75,7 +80,10 @@ async function runE2ETests() {
   }
 
   if (!wsUrl) {
-    throw new Error('Could not connect to Chrome debugging endpoint');
+    chromeProc.kill('SIGTERM');
+    server.close();
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+    throw new Error('Could not connect to Chrome debugging endpoint. Chrome exit code: ' + chromeProc.exitCode + '. stderr: ' + chromeErrors);
   }
 
   console.log('Connected to Chrome via CDP WebSocket');
