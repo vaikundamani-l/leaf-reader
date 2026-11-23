@@ -99,3 +99,8 @@ export function restoreBookLocations(book,saved,compare){
   return true;
  }catch{return false}
 }
+
+// Interactive EPUB elements must retain their own touch gestures and activation.
+export function isInteractiveSwipeTarget(target) {
+  return Boolean(target?.closest?.('a, button, input, select, textarea, summary, audio, video, iframe, [contenteditable], [role="button"], [role="link"]'));
+}

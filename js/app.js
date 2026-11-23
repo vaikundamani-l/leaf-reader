@@ -1,4 +1,4 @@
-import { installBookLinks, prepareBookChapters, restoreBookLocations } from './book-navigation.js';
+import { installBookLinks, prepareBookChapters, restoreBookLocations, isInteractiveSwipeTarget } from './book-navigation.js';
 import { get, put, remove } from './storage.js';
 
 const $ = s => document.querySelector(s);
@@ -852,14 +852,14 @@ async function openBook(b, startAt = b.cfi) {
       let touchStart;
       doc.addEventListener('touchstart', e => {
         const touch = e.touches.length === 1 ? e.touches[0] : null;
-        touchStart = touch && { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+        touchStart = touch && !isInteractiveSwipeTarget(e.target) && { id: touch.identifier, x: touch.clientX, y: touch.clientY };
       }, { passive: true });
       doc.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
       doc.addEventListener('touchend', e => {
         const start = touchStart;
         touchStart = null;
         if (!start || e.touches.length || !active() || contents.window.getSelection()?.toString()) return;
-        if (e.target.closest?.('input, button, select, textarea, [contenteditable]')) return;
+        if (isInteractiveSwipeTarget(e.target)) return;
         const touch = Array.from(e.changedTouches).find(t => t.identifier === start.id);
         if (!touch) return;
         const dx = touch.clientX - start.x;

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {resolveBookLink,installBookLinks,restoreBookLocations} from './js/book-navigation.js';
+import {resolveBookLink,installBookLinks,restoreBookLocations,isInteractiveSwipeTarget} from './js/book-navigation.js';
 const a={href:'text/first.xhtml',url:'/EPUB/text/first.xhtml',index:0};
 const b={href:'text/next.xhtml',url:'/EPUB/text/next.xhtml',index:1};
 const book={spine:{spineItems:[a,b],get(href){return[a,b].find(s=>s.href===href.split('#')[0])}}};
@@ -27,3 +27,11 @@ assert.equal(restoreBookLocations(locationBook,JSON.stringify(valid),compare),tr
 assert.equal(restoreBookLocations(locationBook,JSON.stringify([...valid,...valid]),compare),false);
 assert.equal(restoreBookLocations(locationBook,'invalid',compare),false);
 console.log('PASS saved locations are reused and duplicated/out-of-order location caches are rejected');
+
+for (const tag of ['a','button','input','select','textarea','summary','audio','video','iframe']) {
+  const target={closest:selector=>selector.split(', ').includes(tag)?{}:null};
+  assert.equal(isInteractiveSwipeTarget(target),true,`${tag} should retain its gestures`);
+}
+assert.equal(isInteractiveSwipeTarget({closest:()=>null}),false);
+assert.equal(isInteractiveSwipeTarget(null),false);
+console.log('PASS interactive EPUB elements are excluded from page swipe navigation');
