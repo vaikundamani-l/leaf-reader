@@ -1,4 +1,4 @@
-import { installBookLinks, prepareBookChapters, restoreBookLocations, isInteractiveSwipeTarget } from './book-navigation.js';
+import { installBookLinks, prepareBookChapters, restoreBookLocations, isInteractiveSwipeTarget, displayWithResumeRecovery } from './book-navigation.js';
 import { get, put, remove } from './storage.js';
 
 const $ = s => document.querySelector(s);
@@ -925,10 +925,12 @@ async function openBook(b, startAt = b.cfi) {
       b.locations = null;
     }
 
-    firstDisplay = rendition.display(startAt || undefined);
-    await firstDisplay;
+    const openingRendition = rendition;
+    firstDisplay = displayWithResumeRecovery(target => openingRendition.display(target), startAt, active);
+    const recovered = await firstDisplay;
     if (!active()) return;
     firstDisplay = null;
+    if (recovered) toast('Saved reading position unavailable. Opened from the beginning.');
 
     if (loader) loader.hidden = true;
 
