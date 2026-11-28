@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {resolveBookLink,installBookLinks,restoreBookLocations,isInteractiveSwipeTarget} from './js/book-navigation.js';
+import {resolveBookLink,installBookLinks,restoreBookLocations,isInteractiveSwipeTarget,displayWithResumeRecovery} from './js/book-navigation.js';
 const a={href:'text/first.xhtml',url:'/EPUB/text/first.xhtml',index:0};
 const b={href:'text/next.xhtml',url:'/EPUB/text/next.xhtml',index:1};
 const book={spine:{spineItems:[a,b],get(href){return[a,b].find(s=>s.href===href.split('#')[0])}}};
@@ -35,3 +35,20 @@ for (const tag of ['a','button','input','select','textarea','summary','audio','v
 assert.equal(isInteractiveSwipeTarget({closest:()=>null}),false);
 assert.equal(isInteractiveSwipeTarget(null),false);
 console.log('PASS interactive EPUB elements are excluded from page swipe navigation');
+
+let attempts=[];
+assert.equal(await displayWithResumeRecovery(async target=>attempts.push(target),'saved'),false);
+assert.deepEqual(attempts,['saved']);
+attempts=[];
+assert.equal(await displayWithResumeRecovery(async target=>{attempts.push(target);if(target)throw Error('invalid CFI')},'saved'),true);
+assert.deepEqual(attempts,['saved',undefined]);
+attempts=[];
+await assert.rejects(displayWithResumeRecovery(async target=>{attempts.push(target);throw Error('closed')},'saved',()=>false),/closed/);
+assert.deepEqual(attempts,['saved']);
+attempts=[];
+await assert.rejects(displayWithResumeRecovery(async target=>{attempts.push(target);throw Error('broken')},'saved'),/broken/);
+assert.deepEqual(attempts,['saved',undefined]);
+attempts=[];
+await assert.rejects(displayWithResumeRecovery(async target=>{attempts.push(target);throw Error('broken')},undefined),/broken/);
+assert.deepEqual(attempts,[undefined]);
+console.log('PASS saved position recovery, cancellation and bounded retry');

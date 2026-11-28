@@ -104,3 +104,15 @@ export function restoreBookLocations(book,saved,compare){
 export function isInteractiveSwipeTarget(target) {
   return Boolean(target?.closest?.('a, button, input, select, textarea, summary, audio, video, iframe, [contenteditable], [role="button"], [role="link"]'));
 }
+
+// Retry a rejected saved location once, only while the same reader is active.
+export async function displayWithResumeRecovery(display, target, active = () => true) {
+  try {
+    await display(target || undefined);
+    return false;
+  } catch (error) {
+    if (!target || !active()) throw error;
+    await display(undefined);
+    return true;
+  }
+}
